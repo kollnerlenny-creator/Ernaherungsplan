@@ -869,7 +869,7 @@ async function callGroq(prompt, maxTokens){
       max_tokens: maxTokens||1500,
       response_format:{ type:"json_object" },
       reasoning_format:"hidden",
-      reasoning_effort:"low"
+      reasoning_effort:"medium"
     })
   });
   if(!response.ok){ const t = await response.text(); throw new Error("Groq-Fehler ("+response.status+"): "+t.slice(0,150)); }
@@ -890,28 +890,38 @@ async function elaborateIdea(){
   const btn = document.getElementById("elaborateBtn");
   btn.disabled = true;
   statusEl.innerHTML = '<div class="note" style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span class="spinner"></span> KI arbeitet das Rezept aus…</div>';
-  const prompt = `Arbeite folgende Rezept-Idee für eine 4-köpfige Familie aus: "${idea}"
+  const prompt = `Ein Familienmitglied hat folgende Rezept-Idee für den Essensplan eingegeben: "${idea}"
 
-Verbotene Zutaten im Haushalt (niemals verwenden, sinnvoll ersetzen): ${HOUSEHOLD_RULES.join(", ")}.
+WICHTIG: Nimm die Idee ernst und wörtlich. Erfinde kein komplett anderes Gericht, nur weil eine Zutat nicht ins Haushaltsschema passt — ersetze in diesem Fall gezielt nur die einzelnen problematischen Zutaten, das Grundgericht (Name, Charakter, Zubereitungsart) muss erkennbar erhalten bleiben.
+
+Dieser Rezept-Pool ist ausschließlich für herzhafte Mittag-/Abendessen gedacht (Bowls, Pfannen, Suppen, Ofengerichte, Currys usw. — keine Kuchen, Desserts, Süßspeisen oder Getränke).
+- Falls die Idee ein normales herzhaftes Mittag-/Abendessen ist: arbeite sie so nah wie möglich am Original aus, ersetze nur einzelne verbotene Zutaten sinnvoll (setze "istPassend": true).
+- Falls die Idee grundsätzlich nicht in dieses Schema passt (z. B. Kuchen, Dessert, Süßspeise, Getränk, Frühstücksgebäck): erfinde NICHTS Beliebiges. Setze stattdessen "istPassend": false, lasse "ingredients" leer und erkläre in "hinweis" kurz und ehrlich, warum die Idee hier nicht passt.
+
+Verbotene Zutaten im Haushalt (niemals verwenden, bei Bedarf 1:1 sinnvoll ersetzen, z. B. Zucker → Datteln/Ahornsirup, Weizen → Buchweizen/Hafer, Milch → Pflanzendrink): ${HOUSEHOLD_RULES.join(", ")}.
 Hähnchen ist erlaubt, aber nur als Dienstags-Gericht — wenn die Idee kein explizites Hähnchen-Gericht ist, bevorzuge Tofu/Hülsenfrüchte/Ei als Proteinquelle.
 
-Vorlieben & Kontext der Familie:
+Vorlieben & Kontext der Familie (nur zur Orientierung bei Mengen/Zutatenwahl, NICHT um die Idee zu überschreiben):
 - Lenny (17, vegetarisch, Muskelaufbau) und Luis (15, Wachstum & Muskelaufbau) brauchen Mo–Fr meal-prep-taugliche Portionen für die Schule.
 - Papa (Muskelaufbau/Regeneration) hat den höchsten Proteinbedarf, Mama (Fettabbau/Lauftraining) bevorzugt mehr Gemüse, weniger Kohlenhydrate/Fett.
-- Übliche Vorratszutaten im Haushalt, bevorzugt darauf zurückgreifen: Reis, Quinoa, Buchweizen, Süßkartoffel, Kartoffeln, Kichererbsen, rote/schwarze Linsen, Kidneybohnen, weiße Bohnen, Natur-/Räuchertofu, Eier, Kokosmilch, Tahin, Cashew-Creme, Zucchini, Paprika, Karotten, Blumenkohl, Fenchel, Kürbis, Oliven-/Leinöl, Walnüsse, Mandeln, Kürbiskerne, Chiasamen.
-- Rezept soll zur bestehenden Rotation passen (herzhafte Bowls, Pfannen, Suppen, Ofengerichte) — keine süßen Hauptgerichte.
+- Übliche Vorratszutaten im Haushalt, bevorzugt darauf zurückgreifen, wenn es zum Gericht passt: Reis, Quinoa, Buchweizen, Süßkartoffel, Kartoffeln, Kichererbsen, rote/schwarze Linsen, Kidneybohnen, weiße Bohnen, Natur-/Räuchertofu, Eier, Kokosmilch, Tahin, Cashew-Creme, Zucchini, Paprika, Karotten, Blumenkohl, Fenchel, Kürbis, Oliven-/Leinöl, Walnüsse, Mandeln, Kürbiskerne, Chiasamen.
 
-Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
-{"name":"...", "mealType":"mittag oder abend", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":"Zutaten mit Mengen für 4 Portionen als kurzer String"}`;
+Antworte NUR mit einem JSON-Objekt, keine Erklärung außerhalb des JSON, kein Markdown:
+{"name":"...", "istPassend": true/false, "hinweis":"kurzer Hinweis, leer wenn istPassend true und keine Anmerkung nötig", "mealType":"mittag oder abend", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":"Zutaten mit Mengen für 4 Portionen als kurzer String, leer wenn istPassend false"}`;
   try{
-    const text = await callGroq(prompt, 600);
+    const text = await callGroq(prompt, 900);
     const parsed = extractJson(text);
+    if(parsed.istPassend === false){
+      statusEl.innerHTML = `<div class="note" style="color:var(--warn);">${parsed.hinweis || "Diese Idee passt nicht als herzhaftes Mittag-/Abendessen in den Rezept-Pool."} Formuliere die Idee ggf. um (z. B. als herzhafte Variante) oder trage sie manuell unten ein.</div>`;
+      return;
+    }
     document.getElementById("rName").value = parsed.name || idea;
     document.getElementById("rMealType").value = parsed.mealType==="abend" ? "abend" : "mittag";
     document.getElementById("rProtein").value = ["Tofu","Hähnchen","Ei","Gemischt"].includes(parsed.protein) ? parsed.protein : "Gemischt";
     document.getElementById("rIngredients").value = parsed.ingredients || "";
     document.getElementById("rMealPrep").checked = !!parsed.mealPrepGeeignet;
-    statusEl.innerHTML = '<div class="note" style="color:var(--accent);">Vorschlag wurde unten im Formular eingetragen — prüfen und "Zum Pool hinzufügen" klicken.</div>';
+    const hinweisHtml = parsed.hinweis ? `<div class="note" style="color:var(--warn); margin-top:4px;">Hinweis: ${parsed.hinweis}</div>` : "";
+    statusEl.innerHTML = `<div class="note" style="color:var(--accent);">Vorschlag wurde unten im Formular eingetragen — prüfen und "Zum Pool hinzufügen" klicken.</div>${hinweisHtml}`;
     document.getElementById("ideaInput").value = "";
   }catch(err){
     statusEl.innerHTML = `<div class="note" style="color:var(--danger);">Ausarbeitung fehlgeschlagen: ${err.message}.</div>`;
