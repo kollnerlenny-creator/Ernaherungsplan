@@ -66,16 +66,22 @@
     backdrop-filter:blur(24px) saturate(160%); -webkit-backdrop-filter:blur(24px) saturate(160%);
     box-shadow:0 12px 32px rgba(20,40,35,0.14), inset 0 1px 0 rgba(255,255,255,0.7);
     border-radius:24px;
-    display:flex; justify-content:space-around; align-items:center;
-    max-width:520px; margin:0 auto; z-index:50;
+    display:grid; grid-template-columns:repeat(5,1fr); align-items:center;
+    max-width:520px; margin:0 auto; z-index:50; position:fixed;
+  }
+  .nav-indicator{
+    position:absolute; top:8px; bottom:8px; left:0; border-radius:16px; background:var(--accent-soft);
+    transition:transform .38s cubic-bezier(.22,1,.36,1), opacity .25s ease;
+    z-index:0; pointer-events:none; opacity:0;
   }
   nav.bottomnav button{
+    position:relative; z-index:1;
     background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:4px;
-    color:var(--text-dim); font-size:10.5px; font-weight:700; cursor:pointer; padding:8px 14px; border-radius:16px;
-    transition:background .38s cubic-bezier(.22,1,.36,1), color .3s ease, transform .2s;
+    color:var(--text-dim); font-size:10.5px; font-weight:700; cursor:pointer; padding:8px 4px; border-radius:16px;
+    transition:color .3s ease, transform .2s;
   }
   nav.bottomnav button svg{width:21px; height:21px; stroke:var(--text-dim); fill:none; stroke-width:1.9; transition:transform .3s cubic-bezier(.34,1.56,.64,1), stroke .3s ease;}
-  nav.bottomnav button.active{color:var(--accent); background:var(--accent-soft);}
+  nav.bottomnav button.active{color:var(--accent);}
   nav.bottomnav button.active svg{stroke:var(--accent); transform:translateY(-1px) scale(1.08);}
   nav.bottomnav button:active{transform:scale(0.92);}
 
@@ -278,6 +284,35 @@
   .swap-option .so-name{ font-size:13.5px; font-weight:700; }
   .swap-option .so-meta{ font-size:11px; color:var(--text-dim); margin-top:2px; }
   .swap-option.current{ border-color:var(--accent); background:var(--accent-soft); }
+
+  /* Tap-Highlight (mobiler Browser-Standard, wie bei Links) global deaktivieren */
+  *{ -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
+  button, a, .meal .check, .shop-item, .recipe-card, .swap-option, .login-btn, [data-swap], [data-open-recipe]{ outline:none; }
+
+  /* ---------- Boxed Zutaten & Schritt-für-Schritt (Rezept-Detail / Rezept-Idee) ---------- */
+  .ingredient-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
+  .ingredient-chip{
+    background:rgba(255,255,255,0.55); border:1px solid var(--glass-border); border-radius:14px;
+    padding:10px 12px; box-shadow:0 2px 8px rgba(20,40,35,0.04);
+  }
+  .ingredient-chip .ic-menge{ font-size:12.5px; font-weight:800; color:var(--accent2); }
+  .ingredient-chip .ic-name{ font-size:12px; color:var(--text-dim); margin-top:1px; }
+
+  .step-box{
+    display:flex; gap:12px; align-items:flex-start; padding:13px 14px; border-radius:16px;
+    background:rgba(255,255,255,0.55); border:1px solid var(--glass-border); margin-bottom:8px;
+    box-shadow:0 2px 8px rgba(20,40,35,0.04);
+  }
+  .step-box .sb-num{
+    flex-shrink:0; width:26px; height:26px; border-radius:50%; background:var(--accent2-soft); color:var(--accent2);
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;
+  }
+  .step-box .sb-text{ font-size:13px; line-height:1.55; padding-top:3px; }
+  .tipp-box{
+    display:flex; gap:10px; padding:12px 14px; border-radius:14px; background:var(--accent-soft);
+    border:1px solid rgba(61,220,132,0.3); margin-top:4px;
+  }
+  .tipp-box .tb-text{ font-size:12.5px; color:#1d6b45; line-height:1.5; }
 </style>
 </head>
 <body>
@@ -332,6 +367,17 @@
   <!-- REZEPTE -->
   <div class="screen" id="screen-rezepte">
     <div class="glass card">
+      <h2><svg class="icon" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6l-6.3 4.4L8 13.8l-6-4.4h7.6z"/></svg>Rezept-Idee ausarbeiten</h2>
+      <p class="note">Nur eine Idee eintippen — die KI erstellt ein vollständiges Rezept mit Zutaten, Mengen & Zubereitung und prüft die Haushaltsregeln.</p>
+      <div class="import-row">
+        <input type="text" id="ideaInput" placeholder="z. B. Kürbis-Curry, Ofengemüse mit Reis…">
+        <button class="btn primary small" id="elaborateBtn">Ausarbeiten</button>
+      </div>
+      <div id="elaborateStatus"></div>
+      <div id="elaborateResult"></div>
+    </div>
+
+    <div class="glass card">
       <h2><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Rezept-Import</h2>
       <p class="note" id="importHint"></p>
       <div class="import-row">
@@ -344,18 +390,11 @@
     </div>
 
     <div class="glass card">
-      <h2><svg class="icon" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6l-6.3 4.4L8 13.8l-6-4.4h7.6z"/></svg>Rezept-Idee ausarbeiten</h2>
-      <p class="note">Nur eine Idee eintippen — die KI erstellt Zutaten & Mengen und prüft die Haushaltsregeln.</p>
-      <div class="import-row">
-        <input type="text" id="ideaInput" placeholder="Rezept-Idee eingeben">
-        <button class="btn primary small" id="elaborateBtn">Ausarbeiten</button>
-      </div>
-      <div id="elaborateStatus"></div>
-    </div>
-
-    <div class="glass card">
-      <h2><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Manuell hinzufügen</h2>
-      <div class="form">
+      <h2 id="manualToggle" style="cursor:pointer; justify-content:space-between;">
+        <span style="display:flex; align-items:center; gap:8px;"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Manuell hinzufügen</span>
+        <svg class="icon-sm" id="manualChevron" viewBox="0 0 24 24" style="width:16px;height:16px; transition:transform .3s;"><path d="M6 9l6 6 6-6"/></svg>
+      </h2>
+      <div class="form" id="manualForm" style="display:none; margin-top:12px;">
         <div><label>Name</label><input type="text" id="rName" placeholder="z. B. Kichererbsen-Curry"></div>
         <div><label>Protein-Basis</label><select id="rProtein"><option value="Tofu">Tofu/Hülsenfrüchte</option><option value="Hähnchen">Hähnchen</option><option value="Ei">Eier</option><option value="Gemischt">Gemischt</option></select></div>
         <div><label>Zutaten / Mengen</label><textarea id="rIngredients" rows="2" placeholder="z. B. Kichererbsen 240 g, Reis 100 g"></textarea></div>
@@ -366,6 +405,7 @@
 
     <div class="glass card">
       <h2><svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Rezept-Pool <span style="color:var(--text-dim); font-weight:400; font-size:12px;">(&nbsp;<span id="poolCount">0</span>)</span></h2>
+      <p class="note" style="margin-bottom:8px;">Zum Öffnen antippen — dort gibt's Zutaten & Schritt-für-Schritt-Anleitung.</p>
       <div id="recipePoolList"></div>
     </div>
   </div>
@@ -659,6 +699,7 @@ function persistLocked(){ DB.set("lockedDays", state.lockedDays, true); }
 function persistFixed(){ DB.set("fixedOverrides", state.fixedOverrides, true); }
 
 // ---------- Bottom Nav ----------
+const NAV_TABS = ["heute","woche","rezepte","fortschritt","mehr"];
 function renderNav(){
   const tabs = [
     {id:"heute", label:"Heute", icon:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><circle cx="12" cy="15" r="1.5"/>'},
@@ -668,13 +709,31 @@ function renderNav(){
     {id:"mehr", label:"Mehr", icon:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'}
   ];
   const nav = document.getElementById("bottomNav");
-  nav.innerHTML = tabs.map(t=>`<button data-id="${t.id}" class="${t.id==='heute'?'active':''}"><svg viewBox="0 0 24 24">${t.icon}</svg>${t.label}</button>`).join("");
+  nav.innerHTML = '<div class="nav-indicator" id="navIndicator"></div>' +
+    tabs.map(t=>`<button data-id="${t.id}" class="${t.id==='heute'?'active':''}"><svg viewBox="0 0 24 24">${t.icon}</svg>${t.label}</button>`).join("");
   nav.querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>switchScreen(b.dataset.id)));
+  // Erste Positionierung ohne Transition (kein "Reinfliegen" beim initialen Laden)
+  const indicator = document.getElementById("navIndicator");
+  indicator.style.transition = "none";
+  moveNavIndicator("heute");
+  requestAnimationFrame(()=>{ indicator.style.transition = ""; });
+}
+// Deterministisch über den Spalten-Index positioniert (Grid mit 5 exakt gleich breiten Spalten) —
+// keine Messung einzelner Button-Breiten nötig, dadurch keine Race-Conditions mehr möglich.
+function moveNavIndicator(id){
+  const indicator = document.getElementById("navIndicator");
+  if(!indicator) return;
+  const idx = NAV_TABS.indexOf(id);
+  if(idx < 0){ indicator.style.opacity = "0"; return; }
+  indicator.style.opacity = "1";
+  indicator.style.width = "calc(100%/5 - 8px)";
+  indicator.style.transform = `translateX(calc(${idx} * 100% + 4px))`;
 }
 function switchScreen(id){
   document.querySelectorAll("#bottomNav button").forEach(b=>b.classList.toggle("active", b.dataset.id===id));
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById("screen-"+id).classList.add("active");
+  moveNavIndicator(id);
   if(id==="heute") renderHeute();
   if(id==="fortschritt") renderProfile();
 }
@@ -682,6 +741,7 @@ document.getElementById("openSettings").addEventListener("click", ()=>{
   document.querySelectorAll("#bottomNav button").forEach(b=>b.classList.remove("active"));
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById("screen-settings").classList.add("active");
+  moveNavIndicator(null);
 });
 
 // ---------- Rezept-Auswahl ----------
@@ -1012,18 +1072,23 @@ document.getElementById("swapModalClose").addEventListener("click", ()=>closeMod
 function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+// Gemeinsame Bausteine: Zutaten als Chip-Grid, Zubereitung als nummerierte Schritt-Boxen —
+// wird sowohl im Rezept-Detail-Modal als auch bei der Rezept-Idee-Vorschau verwendet.
+function ingredientStepsHtml(f){
+  if(!f) return '<div class="empty">Kein Rezept geladen.</div>';
+  return `
+    <h4>Zutaten (für 4 Portionen)</h4>
+    <div class="ingredient-grid">${(f.ingredients||[]).map(i=>`
+      <div class="ingredient-chip"><div class="ic-menge">${escapeHtml(i.menge||"")}</div><div class="ic-name">${escapeHtml(i.name||"")}</div></div>`).join("")}</div>
+    <h4>Zubereitung</h4>
+    ${(f.steps||[]).map((s,i)=>`
+      <div class="step-box"><div class="sb-num">${i+1}</div><div class="sb-text">${escapeHtml(s)}</div></div>`).join("")}
+    ${f.tipp ? `<div class="tipp-box"><svg class="icon-sm" viewBox="0 0 24 24" style="stroke:var(--accent); flex-shrink:0; margin-top:1px;"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6l-6.3 4.4L8 13.8l-6-4.4h7.6z"/></svg><div class="tb-text">${escapeHtml(f.tipp)}</div></div>` : ""}`;
+}
 function renderFullRecipe(r){
-  const f = r.fullRecipe;
   document.getElementById("recipeModalTitle").textContent = r.name;
   const body = document.getElementById("recipeModalBody");
-  if(!f){ body.innerHTML = '<div class="empty">Kein Rezept geladen.</div>'; return; }
-  body.innerHTML = `
-    <h4>Zutaten (für 4 Portionen)</h4>
-    <ul>${(f.ingredients||[]).map(i=>`<li>${escapeHtml(i.menge||"")} ${escapeHtml(i.name||"")}</li>`).join("")}</ul>
-    <h4>Zubereitung</h4>
-    <ol>${(f.steps||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join("")}</ol>
-    ${f.tipp ? `<h4>Tipp</h4><p>${escapeHtml(f.tipp)}</p>` : ""}
-    <p class="note" style="margin-top:14px;">KI-generiert auf Basis der Haushaltsregeln — bitte vor dem Kochen kurz gegenchecken.</p>`;
+  body.innerHTML = ingredientStepsHtml(r.fullRecipe) + '<p class="note" style="margin-top:14px;">KI-generiert auf Basis der Haushaltsregeln — bitte vor dem Kochen kurz gegenchecken.</p>';
 }
 async function openRecipeDetail(recipeId){
   const r = recipeById(recipeId);
@@ -1122,20 +1187,25 @@ function extractJson(text){
   return JSON.parse(m[0]);
 }
 
+let pendingIdeaRecipe = null;
 async function elaborateIdea(){
   const idea = document.getElementById("ideaInput").value.trim();
   const statusEl = document.getElementById("elaborateStatus");
+  const resultEl = document.getElementById("elaborateResult");
+  resultEl.innerHTML = "";
+  pendingIdeaRecipe = null;
   if(!idea){ statusEl.innerHTML = '<div class="note" style="color:var(--danger);">Bitte eine Rezept-Idee eingeben.</div>'; return; }
+  if(!state.groqKey){ statusEl.innerHTML = '<div class="note" style="color:var(--danger);">Kein Groq-Key hinterlegt — bitte zuerst unter Einstellungen eintragen.</div>'; return; }
   const btn = document.getElementById("elaborateBtn");
   btn.disabled = true;
-  statusEl.innerHTML = '<div class="note" style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span class="spinner"></span> KI arbeitet das Rezept aus…</div>';
+  statusEl.innerHTML = '<div class="note" style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span class="spinner"></span> KI arbeitet das vollständige Rezept aus…</div>';
   const prompt = `Ein Familienmitglied hat folgende Rezept-Idee für den Essensplan eingegeben: "${idea}"
 
 WICHTIG: Nimm die Idee ernst und wörtlich. Erfinde kein komplett anderes Gericht, nur weil eine Zutat nicht ins Haushaltsschema passt — ersetze in diesem Fall gezielt nur die einzelnen problematischen Zutaten, das Grundgericht (Name, Charakter, Zubereitungsart) muss erkennbar erhalten bleiben.
 
 Dieser Rezept-Pool ist ausschließlich für herzhafte Mittag-/Abendessen gedacht (Bowls, Pfannen, Suppen, Ofengerichte, Currys usw. — keine Kuchen, Desserts, Süßspeisen oder Getränke).
-- Falls die Idee ein normales herzhaftes Mittag-/Abendessen ist: arbeite sie so nah wie möglich am Original aus, ersetze nur einzelne verbotene Zutaten sinnvoll (setze "istPassend": true).
-- Falls die Idee grundsätzlich nicht in dieses Schema passt (z. B. Kuchen, Dessert, Süßspeise, Getränk, Frühstücksgebäck): erfinde NICHTS Beliebiges. Setze stattdessen "istPassend": false, lasse "ingredients" leer und erkläre in "hinweis" kurz und ehrlich, warum die Idee hier nicht passt.
+- Falls die Idee ein normales herzhaftes Mittag-/Abendessen ist: arbeite sie so nah wie möglich am Original aus, ersetze nur einzelne verbotene Zutaten sinnvoll (setze "istPassend": true) und erstelle das VOLLSTÄNDIGE Rezept mit exakten Mengen für 4 Portionen sowie einer klaren Schritt-für-Schritt-Zubereitung.
+- Falls die Idee grundsätzlich nicht in dieses Schema passt (z. B. Kuchen, Dessert, Süßspeise, Getränk, Frühstücksgebäck): erfinde NICHTS Beliebiges. Setze stattdessen "istPassend": false, lasse "ingredients"/"steps" leer und erkläre in "hinweis" kurz und ehrlich, warum die Idee hier nicht passt.
 
 Verbotene Zutaten im Haushalt (niemals verwenden, bei Bedarf 1:1 sinnvoll ersetzen, z. B. Zucker → Datteln/Ahornsirup, Weizen → Buchweizen/Hafer, Milch → Pflanzendrink): ${HOUSEHOLD_RULES.join(", ")}.
 Hähnchen ist erlaubt, aber nur als Dienstags-Gericht — wenn die Idee kein explizites Hähnchen-Gericht ist, bevorzuge Tofu/Hülsenfrüchte/Ei als Proteinquelle.
@@ -1146,21 +1216,47 @@ Vorlieben & Kontext der Familie (nur zur Orientierung bei Mengen/Zutatenwahl, NI
 - Übliche Vorratszutaten im Haushalt, bevorzugt darauf zurückgreifen, wenn es zum Gericht passt: Reis, Quinoa, Buchweizen, Süßkartoffel, Kartoffeln, Kichererbsen, rote/schwarze Linsen, Kidneybohnen, weiße Bohnen, Natur-/Räuchertofu, Eier, Kokosmilch, Tahin, Cashew-Creme, Zucchini, Paprika, Karotten, Blumenkohl, Fenchel, Kürbis, Oliven-/Leinöl, Walnüsse, Mandeln, Kürbiskerne, Chiasamen.
 
 Antworte NUR mit einem JSON-Objekt, keine Erklärung außerhalb des JSON, kein Markdown:
-{"name":"...", "istPassend": true/false, "hinweis":"kurzer Hinweis, leer wenn istPassend true und keine Anmerkung nötig", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":"Zutaten mit Mengen für 4 Portionen als kurzer String, leer wenn istPassend false"}`;
+{"name":"...", "istPassend": true/false, "hinweis":"kurzer Hinweis, leer wenn istPassend true und keine Anmerkung nötig", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":[{"menge":"z. B. 250 g","name":"Zutat"}], "steps":["Schritt 1...", "Schritt 2..."], "tipp":"ein kurzer praktischer Tipp, optional leer"}`;
   try{
-    const text = await callGroq(prompt, 900);
+    const text = await callGroq(prompt, 1600);
     const parsed = extractJson(text);
+    statusEl.innerHTML = "";
     if(parsed.istPassend === false){
-      statusEl.innerHTML = `<div class="note" style="color:var(--warn);">${parsed.hinweis || "Diese Idee passt nicht als herzhaftes Mittag-/Abendessen in den Rezept-Pool."} Formuliere die Idee ggf. um (z. B. als herzhafte Variante) oder trage sie manuell unten ein.</div>`;
+      resultEl.innerHTML = `<div class="import-result"><div class="warn-line" style="color:var(--warn);"><span>${escapeHtml(parsed.hinweis || "Diese Idee passt nicht als herzhaftes Mittag-/Abendessen in den Rezept-Pool.")} Formuliere die Idee ggf. um oder trage sie manuell unten ein.</span></div></div>`;
       return;
     }
-    document.getElementById("rName").value = parsed.name || idea;
-    document.getElementById("rProtein").value = ["Tofu","Hähnchen","Ei","Gemischt"].includes(parsed.protein) ? parsed.protein : "Gemischt";
-    document.getElementById("rIngredients").value = parsed.ingredients || "";
-    document.getElementById("rMealPrep").checked = !!parsed.mealPrepGeeignet;
-    const hinweisHtml = parsed.hinweis ? `<div class="note" style="color:var(--warn); margin-top:4px;">Hinweis: ${parsed.hinweis}</div>` : "";
-    statusEl.innerHTML = `<div class="note" style="color:var(--accent);">Vorschlag wurde unten im Formular eingetragen — prüfen und "Zum Pool hinzufügen" klicken.</div>${hinweisHtml}`;
-    document.getElementById("ideaInput").value = "";
+    const shortIngredients = (parsed.ingredients||[]).map(i=>`${i.menge||""} ${i.name||""}`.trim()).join(", ");
+    pendingIdeaRecipe = {
+      id:"r"+Date.now(), name: parsed.name||idea,
+      protein: ["Tofu","Hähnchen","Ei","Gemischt"].includes(parsed.protein) ? parsed.protein : "Gemischt",
+      mealPrep: !!parsed.mealPrepGeeignet, ingredients: shortIngredients,
+      fullRecipe: { ingredients: parsed.ingredients||[], steps: parsed.steps||[], tipp: parsed.tipp||"" }
+    };
+    const hinweisHtml = parsed.hinweis ? `<div class="warn-line" style="color:var(--warn); margin-top:0;"><span>${escapeHtml(parsed.hinweis)}</span></div>` : "";
+    resultEl.innerHTML = `
+      <div class="import-result">
+        <div class="name" style="font-size:14.5px;font-weight:800;">${escapeHtml(pendingIdeaRecipe.name)}</div>
+        <div class="meta" style="font-size:11.5px;color:var(--text-dim);margin-top:3px;">${pendingIdeaRecipe.protein}${pendingIdeaRecipe.mealPrep?' · Meal-Prep-tauglich':''}</div>
+        ${hinweisHtml}
+        <div style="margin-top:10px;">${ingredientStepsHtml(pendingIdeaRecipe.fullRecipe)}</div>
+        <div class="form-actions" style="margin-top:14px;">
+          <button class="btn primary small" id="acceptIdeaBtn">Zum Pool hinzufügen</button>
+          <button class="btn small" id="discardIdeaBtn">Verwerfen</button>
+        </div>
+      </div>`;
+    document.getElementById("acceptIdeaBtn").addEventListener("click", ()=>{
+      if(!pendingIdeaRecipe) return;
+      recipePool.push(pendingIdeaRecipe);
+      persistPool();
+      renderRecipePool();
+      resultEl.innerHTML = '<div class="note" style="color:var(--accent);">Zum Pool hinzugefügt.</div>';
+      document.getElementById("ideaInput").value = "";
+      pendingIdeaRecipe = null;
+    });
+    document.getElementById("discardIdeaBtn").addEventListener("click", ()=>{
+      resultEl.innerHTML = "";
+      pendingIdeaRecipe = null;
+    });
   }catch(err){
     statusEl.innerHTML = `<div class="note" style="color:var(--danger);">Ausarbeitung fehlgeschlagen: ${err.message}.</div>`;
   }finally{ btn.disabled = false; }
@@ -1342,6 +1438,13 @@ function afterLogin(){
   document.getElementById("regenBtn").addEventListener("click", ()=>{ generateWeek(); renderDayTabs(); renderPlan(); });
   document.getElementById("lockBtn").addEventListener("click", ()=>{ state.lockedDays[currentDay] = !state.lockedDays[currentDay]; persistLocked(); renderDayTabs(); updateLockBtn(); });
   document.getElementById("addRecipeBtn").addEventListener("click", addManualRecipe);
+  document.getElementById("manualToggle").addEventListener("click", ()=>{
+    const form = document.getElementById("manualForm");
+    const chevron = document.getElementById("manualChevron");
+    const open = form.style.display !== "none";
+    form.style.display = open ? "none" : "block";
+    chevron.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
+  });
   document.getElementById("importBtn").addEventListener("click", analyzeRecipeLink);
   document.getElementById("elaborateBtn").addEventListener("click", elaborateIdea);
 }
