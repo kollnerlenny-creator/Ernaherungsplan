@@ -2,8 +2,16 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Familien-Ernährungsplan</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#3ddc84">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ernährung">
 <style>
   :root{
     --bg1:#f5f8f6; --bg2:#eef3fb;
@@ -48,9 +56,8 @@
   .icon-sm{width:14px; height:14px; stroke:var(--text-dim); fill:none; stroke-width:1.8;}
   .icon-btn{width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2;}
 
-  .screen{display:none; animation:fadeIn .25s ease;}
+  .screen{display:none;}
   .screen.active{display:block;}
-  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
 
   /* Bottom nav */
   nav.bottomnav{
@@ -62,6 +69,12 @@
     display:flex; justify-content:space-around; align-items:center;
     max-width:520px; margin:0 auto; z-index:50;
   }
+  .nav-indicator{
+    position:absolute; top:8px; bottom:8px; border-radius:16px; background:var(--accent-soft);
+    transition:transform .38s cubic-bezier(.22,1,.36,1), width .38s cubic-bezier(.22,1,.36,1);
+    z-index:0; pointer-events:none;
+  }
+  nav.bottomnav button{ position:relative; z-index:1; }
   nav.bottomnav button{
     background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:4px;
     color:var(--text-dim); font-size:10.5px; font-weight:700; cursor:pointer; padding:6px 12px; border-radius:14px; transition:.2s;
@@ -213,6 +226,65 @@
   .login-btn:hover{background:#fff;}
   .login-btn .lb-name{font-size:14.5px; font-weight:800; color:var(--text);}
   .login-btn .lb-sub{font-size:11.5px; color:var(--text-dim);}
+
+  /* ---------- Animationen ---------- */
+  @keyframes itemIn{ from{opacity:0; transform:translateY(10px) scale(0.98);} to{opacity:1; transform:translateY(0) scale(1);} }
+  .item-in{ animation:itemIn .38s cubic-bezier(.22,1,.36,1) both; }
+
+  .screen{display:none;}
+  .screen.active{display:block; animation:screenIn .32s cubic-bezier(.22,1,.36,1) both;}
+  @keyframes screenIn{ from{opacity:0; transform:translateY(10px) scale(0.99);} to{opacity:1; transform:translateY(0) scale(1);} }
+
+  nav.bottomnav button svg{ transition:transform .3s cubic-bezier(.34,1.56,.64,1), stroke .2s; }
+  nav.bottomnav button.active svg{ transform:translateY(-1px) scale(1.08); }
+  nav.bottomnav button.active{ animation:navPop .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes navPop{ 0%{transform:scale(0.9);} 60%{transform:scale(1.05);} 100%{transform:scale(1);} }
+
+  .meal .check{ transition:background .25s cubic-bezier(.34,1.56,.64,1), border-color .25s, transform .2s; }
+  .meal .check:active{ transform:scale(0.85); }
+  .meal .check.done{ animation:checkPop .32s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes checkPop{ 0%{transform:scale(0.7);} 55%{transform:scale(1.15);} 100%{transform:scale(1);} }
+
+  [data-swap]{ transition:transform .2s, background .2s; }
+  [data-swap]:active{ transform:scale(0.9) rotate(-25deg); }
+  [data-swap].spinning svg{ animation:swapSpin .5s cubic-bezier(.5,0,.5,1); }
+  @keyframes swapSpin{ to{ transform:rotate(180deg); } }
+
+  .progressbar .fill{ transition:width .55s cubic-bezier(.22,1,.36,1); }
+  .daytabs button, .person-switch button{ transition:.25s cubic-bezier(.34,1.56,.64,1); }
+  .plan-row, .meal, .recipe-card, .shop-item{ animation:itemIn .38s cubic-bezier(.22,1,.36,1) both; }
+
+  /* ---------- Modal / Bottom-Sheet ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0; z-index:400; display:none; align-items:flex-end; justify-content:center;
+    background:rgba(10,20,18,0); backdrop-filter:blur(0px);
+    transition:background .3s ease, backdrop-filter .3s ease;
+  }
+  .modal-backdrop.open{ display:flex; background:rgba(10,20,18,0.35); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  .modal-sheet{
+    width:100%; max-width:520px; max-height:82vh; overflow-y:auto;
+    border-radius:28px 28px 0 0; padding:10px 20px calc(24px + env(safe-area-inset-bottom));
+    transform:translateY(100%); transition:transform .38s cubic-bezier(.22,1,.36,1);
+    background:var(--glass-strong);
+  }
+  .modal-backdrop.open .modal-sheet{ transform:translateY(0); }
+  .modal-handle{ width:40px; height:4px; border-radius:99px; background:var(--glass-border); margin:0 auto 14px; }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .modal-title{ font-size:16px; font-weight:800; }
+  .modal-body{ font-size:13.5px; line-height:1.7; }
+  .modal-body h4{ font-size:12px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim); margin:14px 0 6px; }
+  .modal-body h4:first-child{ margin-top:0; }
+  .modal-body ul{ padding-left:18px; }
+  .modal-body li{ margin-bottom:4px; }
+  .modal-body ol{ padding-left:18px; }
+  .modal-body ol li{ margin-bottom:8px; }
+
+  .swap-option{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 15px; border-radius:var(--radius-sm); background:rgba(255,255,255,0.4); border:1px solid var(--glass-border); margin-bottom:8px; cursor:pointer; transition:.2s; }
+  .swap-option:hover{ background:#fff; }
+  .swap-option:active{ transform:scale(0.98); }
+  .swap-option .so-name{ font-size:13.5px; font-weight:700; }
+  .swap-option .so-meta{ font-size:11px; color:var(--text-dim); margin-top:2px; }
+  .swap-option.current{ border-color:var(--accent); background:var(--accent-soft); }
 </style>
 </head>
 <body>
@@ -229,7 +301,10 @@
       <div class="date" id="todayDate">–</div>
       <div class="title">Familien-Ernährung</div>
     </div>
-    <div class="settings-btn" id="openSettings"><svg viewBox="0 0 24 24" style="width:19px;height:19px;stroke:var(--text-dim);fill:none;stroke-width:1.9;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div class="settings-btn" id="installBtn" style="display:none;" title="App installieren"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2.1;"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
+      <div class="settings-btn" id="openSettings"><svg viewBox="0 0 24 24" style="width:19px;height:19px;stroke:var(--text-dim);fill:none;stroke-width:1.9;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+    </div>
   </div>
 
   <!-- HEUTE -->
@@ -289,10 +364,7 @@
       <h2><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Manuell hinzufügen</h2>
       <div class="form">
         <div><label>Name</label><input type="text" id="rName" placeholder="z. B. Kichererbsen-Curry"></div>
-        <div class="row">
-          <div><label>Kategorie</label><select id="rMealType"><option value="mittag">Mittag</option><option value="abend">Abend</option></select></div>
-          <div><label>Protein-Basis</label><select id="rProtein"><option value="Tofu">Tofu/Hülsenfrüchte</option><option value="Hähnchen">Hähnchen</option><option value="Ei">Eier</option><option value="Gemischt">Gemischt</option></select></div>
-        </div>
+        <div><label>Protein-Basis</label><select id="rProtein"><option value="Tofu">Tofu/Hülsenfrüchte</option><option value="Hähnchen">Hähnchen</option><option value="Ei">Eier</option><option value="Gemischt">Gemischt</option></select></div>
         <div><label>Zutaten / Mengen</label><textarea id="rIngredients" rows="2" placeholder="z. B. Kichererbsen 240 g, Reis 100 g"></textarea></div>
         <div class="checkline"><input type="checkbox" id="rMealPrep" checked> <span>Meal-Prep-tauglich</span></div>
         <div class="form-actions"><button class="btn primary small" id="addRecipeBtn">Zum Pool hinzufügen</button></div>
@@ -358,6 +430,46 @@
 </div>
 
 <nav class="bottomnav" id="bottomNav"></nav>
+
+<!-- Rezept-Detail-Modal (KI generiert vollständiges Rezept) -->
+<div class="modal-backdrop" id="recipeModalBackdrop">
+  <div class="modal-sheet glass" id="recipeModalSheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title" id="recipeModalTitle">Rezept</div>
+      <div class="icon-only-btn" id="recipeModalClose"><svg viewBox="0 0 24 24" style="stroke:var(--text-dim);"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+    </div>
+    <div class="modal-body" id="recipeModalBody"></div>
+  </div>
+</div>
+
+<!-- Rezept-Tausch-Modal (manuelle Auswahl) -->
+<div class="modal-backdrop" id="swapModalBackdrop">
+  <div class="modal-sheet glass" id="swapModalSheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title" id="swapModalTitle">Rezept tauschen</div>
+      <div class="icon-only-btn" id="swapModalClose"><svg viewBox="0 0 24 24" style="stroke:var(--text-dim);"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+    </div>
+    <div class="modal-body">
+      <button class="btn primary" id="swapRandomBtn" style="width:100%; justify-content:center; margin-bottom:12px;"><svg class="icon-btn" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Zufällig tauschen</button>
+      <div id="swapPickerList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Install-Popup (einmalig beim ersten Öffnen, solange App nicht installiert ist) -->
+<div class="modal-backdrop" id="installModalBackdrop">
+  <div class="modal-sheet glass" id="installModalSheet" style="text-align:center; padding-top:24px;">
+    <div style="width:72px; height:72px; margin:0 auto 16px; border-radius:20px; overflow:hidden; box-shadow:var(--glass-shadow);">
+      <img src="icon-192.png" alt="App-Icon" style="width:100%; height:100%; display:block;">
+    </div>
+    <div class="modal-title" style="justify-content:center; font-size:18px;">App installieren</div>
+    <p class="note" style="margin-top:8px;">Füge die Familien-Ernährung als richtige App zu deinem Startbildschirm hinzu — schneller Zugriff, eigenes Icon, kein Browser-Rahmen.</p>
+    <div id="installModalActions" style="margin-top:18px; display:flex; flex-direction:column; gap:10px;"></div>
+    <button class="btn" id="installModalDismiss" style="width:100%; justify-content:center; margin-top:10px;">Vielleicht später</button>
+  </div>
+</div>
 
 <script type="module">
   /* ============ Firebase-Anbindung (echtes Projekt) ============ */
@@ -490,27 +602,27 @@ const DEFAULT_FIXED = {
 };
 
 const DEFAULT_RECIPE_POOL = [
-  {id:"r1", name:"Reis-Gemüse-Pfanne mit Sesam & Naturtofu", mealType:"mittag", protein:"Tofu", mealPrep:true, ingredients:"Reis 120–250 g · Tofu 180–220 g · Gemüse 200–350 g · Sesam"},
-  {id:"r2", name:"Quinoa-Bowl mit Ofengemüse & Hähnchenbrust", mealType:"mittag", protein:"Hähnchen", mealPrep:true, ingredients:"Quinoa 100–250 g · Hähnchenbrust 180–220 g · Ofengemüse 200–350 g"},
-  {id:"r3", name:"Ofen-Kartoffeln mit mediterranem Gemüse & Kichererbsen", mealType:"mittag", protein:"Tofu", mealPrep:true, ingredients:"Kartoffeln 150–300 g · Kichererbsen 200–360 g · Gemüse 200–350 g"},
-  {id:"r4", name:"Süßkartoffel-Hülsenfrüchte-Pfanne mit Kidneybohnen & Tofu", mealType:"mittag", protein:"Tofu", mealPrep:false, ingredients:"Süßkartoffel 150–300 g · Kidneybohnen 200–300 g · Tofu 150 g"},
-  {id:"r5", name:"Buchweizen-Bowl mit Räuchertofu & Ofengemüse", mealType:"mittag", protein:"Tofu", mealPrep:true, ingredients:"Buchweizen 50–100 g · Räuchertofu 150–180 g · Gemüse 200–300 g"},
-  {id:"r6", name:"Cremige Linsensuppe mit Kokosmilch", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Rote Linsen 90–130 g (trocken) · Kokosmilch 50–100 ml · Kräuter"},
-  {id:"r7", name:"Rührei mit Ersatzgemüse & Pellkartoffeln", mealType:"abend", protein:"Ei", mealPrep:false, ingredients:"3–5 Eier · Kartoffeln 120–250 g · Butter · Gemüse (kein Spinat)"},
-  {id:"r8", name:"Buchweizen-Pfanne mit Lauch & Räuchertofu", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Buchweizen 50–100 g · Räuchertofu 150–180 g · Lauch (kein Pilz)"},
-  {id:"r9", name:"Bunter Salat mit weißen Bohnen & Olivenöl-Dressing", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Weiße Bohnen 240–360 g · Salat · Olivenöl · Brot"},
-  {id:"r10", name:"Kichererbsen-Curry mit Kokosmilch & Basmatireis", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Kichererbsen 240–360 g · Reis 125–250 g · Kokosmilch"},
-  {id:"r11", name:"Ofengemüse mit Tahin-Dip, Quinoa & Tofu", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Quinoa 50–100 g · Tofu 150–180 g · Ofengemüse · Tahin"},
-  {id:"r12", name:"Familien-Auflauf mit Kartoffeln, Cashew-Creme & Räuchertofu", mealType:"abend", protein:"Gemischt", mealPrep:false, ingredients:"Kartoffeln 150–300 g · Cashew-Creme · Räuchertofu/Hähnchen-Rest (kein Brokkoli)"},
-  {id:"r13", name:"Gemüse-Cremesuppe mit gerösteten Kürbiskernen", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Ersatzgemüse (kein Brokkoli) 300–400 g · Kürbiskerne"},
-  {id:"r14", name:"Hähnchen-Gemüsepfanne mit Basmatireis (Dienstag)", mealType:"mittag", protein:"Hähnchen", mealPrep:true, ingredients:"Hähnchenbrust 180–220 g · Basmatireis 100–250 g · Gemüse 200–350 g"},
-  {id:"r15", name:"Süßkartoffel-Ofenpommes mit Kichererbsen-Dip & Rohkost", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Süßkartoffel 200–350 g · Kichererbsen (püriert) 200 g · Gurke, Paprika"},
-  {id:"r16", name:"Linsen-Bolognese mit Vollkornnudeln (glutenfrei möglich)", mealType:"abend", protein:"Tofu", mealPrep:true, ingredients:"Rote Linsen 90–130 g · Buchweizennudeln 80–160 g · Tomatensoße · Karotten, Zucchini"},
-  {id:"r17", name:"Gefüllte Ofenkartoffeln mit Räuchertofu & Kräuterquark-Ersatz", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Kartoffeln 200–350 g · Räuchertofu 150–180 g · Gemüseaufstrich, Kräuter"},
-  {id:"r18", name:"Quinoa-Salat mit Kidneybohnen, Mais & Zitronen-Dressing", mealType:"mittag", protein:"Tofu", mealPrep:true, ingredients:"Quinoa 100–250 g · Kidneybohnen 200–300 g · Mais, Paprika, Gurke, Zitrone"},
-  {id:"r19", name:"Kürbis-Kokos-Suppe mit gerösteten Kichererbsen", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Kürbis 400–500 g · Kokosmilch 100–150 ml · Kichererbsen 150 g (geröstet)"},
-  {id:"r20", name:"Zucchini-Karotten-Puffer mit Naturtofu & Dip", mealType:"abend", protein:"Tofu", mealPrep:false, ingredients:"Zucchini, Karotten 300–400 g · Buchweizenmehl · Naturtofu 150 g"},
-  {id:"r21", name:"Fenchel-Ofengemüse mit Weißen Bohnen & Walnüssen", mealType:"mittag", protein:"Tofu", mealPrep:true, ingredients:"Fenchel, Kürbis, Karotten 300 g · Weiße Bohnen 200–300 g · Walnüsse"}
+  {id:"r1", name:"Reis-Gemüse-Pfanne mit Sesam & Naturtofu", protein:"Tofu", mealPrep:true, ingredients:"Reis 120–250 g · Tofu 180–220 g · Gemüse 200–350 g · Sesam"},
+  {id:"r2", name:"Quinoa-Bowl mit Ofengemüse & Hähnchenbrust", protein:"Hähnchen", mealPrep:true, ingredients:"Quinoa 100–250 g · Hähnchenbrust 180–220 g · Ofengemüse 200–350 g"},
+  {id:"r3", name:"Ofen-Kartoffeln mit mediterranem Gemüse & Kichererbsen", protein:"Tofu", mealPrep:true, ingredients:"Kartoffeln 150–300 g · Kichererbsen 200–360 g · Gemüse 200–350 g"},
+  {id:"r4", name:"Süßkartoffel-Hülsenfrüchte-Pfanne mit Kidneybohnen & Tofu", protein:"Tofu", mealPrep:false, ingredients:"Süßkartoffel 150–300 g · Kidneybohnen 200–300 g · Tofu 150 g"},
+  {id:"r5", name:"Buchweizen-Bowl mit Räuchertofu & Ofengemüse", protein:"Tofu", mealPrep:true, ingredients:"Buchweizen 50–100 g · Räuchertofu 150–180 g · Gemüse 200–300 g"},
+  {id:"r6", name:"Cremige Linsensuppe mit Kokosmilch", protein:"Tofu", mealPrep:false, ingredients:"Rote Linsen 90–130 g (trocken) · Kokosmilch 50–100 ml · Kräuter"},
+  {id:"r7", name:"Rührei mit Ersatzgemüse & Pellkartoffeln", protein:"Ei", mealPrep:false, ingredients:"3–5 Eier · Kartoffeln 120–250 g · Butter · Gemüse (kein Spinat)"},
+  {id:"r8", name:"Buchweizen-Pfanne mit Lauch & Räuchertofu", protein:"Tofu", mealPrep:false, ingredients:"Buchweizen 50–100 g · Räuchertofu 150–180 g · Lauch (kein Pilz)"},
+  {id:"r9", name:"Bunter Salat mit weißen Bohnen & Olivenöl-Dressing", protein:"Tofu", mealPrep:false, ingredients:"Weiße Bohnen 240–360 g · Salat · Olivenöl · Brot"},
+  {id:"r10", name:"Kichererbsen-Curry mit Kokosmilch & Basmatireis", protein:"Tofu", mealPrep:false, ingredients:"Kichererbsen 240–360 g · Reis 125–250 g · Kokosmilch"},
+  {id:"r11", name:"Ofengemüse mit Tahin-Dip, Quinoa & Tofu", protein:"Tofu", mealPrep:false, ingredients:"Quinoa 50–100 g · Tofu 150–180 g · Ofengemüse · Tahin"},
+  {id:"r12", name:"Familien-Auflauf mit Kartoffeln, Cashew-Creme & Räuchertofu", protein:"Gemischt", mealPrep:false, ingredients:"Kartoffeln 150–300 g · Cashew-Creme · Räuchertofu/Hähnchen-Rest (kein Brokkoli)"},
+  {id:"r13", name:"Gemüse-Cremesuppe mit gerösteten Kürbiskernen", protein:"Tofu", mealPrep:false, ingredients:"Ersatzgemüse (kein Brokkoli) 300–400 g · Kürbiskerne"},
+  {id:"r14", name:"Hähnchen-Gemüsepfanne mit Basmatireis (Dienstag)", protein:"Hähnchen", mealPrep:true, ingredients:"Hähnchenbrust 180–220 g · Basmatireis 100–250 g · Gemüse 200–350 g"},
+  {id:"r15", name:"Süßkartoffel-Ofenpommes mit Kichererbsen-Dip & Rohkost", protein:"Tofu", mealPrep:false, ingredients:"Süßkartoffel 200–350 g · Kichererbsen (püriert) 200 g · Gurke, Paprika"},
+  {id:"r16", name:"Linsen-Bolognese mit Vollkornnudeln (glutenfrei möglich)", protein:"Tofu", mealPrep:true, ingredients:"Rote Linsen 90–130 g · Buchweizennudeln 80–160 g · Tomatensoße · Karotten, Zucchini"},
+  {id:"r17", name:"Gefüllte Ofenkartoffeln mit Räuchertofu & Kräuterquark-Ersatz", protein:"Tofu", mealPrep:false, ingredients:"Kartoffeln 200–350 g · Räuchertofu 150–180 g · Gemüseaufstrich, Kräuter"},
+  {id:"r18", name:"Quinoa-Salat mit Kidneybohnen, Mais & Zitronen-Dressing", protein:"Tofu", mealPrep:true, ingredients:"Quinoa 100–250 g · Kidneybohnen 200–300 g · Mais, Paprika, Gurke, Zitrone"},
+  {id:"r19", name:"Kürbis-Kokos-Suppe mit gerösteten Kichererbsen", protein:"Tofu", mealPrep:false, ingredients:"Kürbis 400–500 g · Kokosmilch 100–150 ml · Kichererbsen 150 g (geröstet)"},
+  {id:"r20", name:"Zucchini-Karotten-Puffer mit Naturtofu & Dip", protein:"Tofu", mealPrep:false, ingredients:"Zucchini, Karotten 300–400 g · Buchweizenmehl · Naturtofu 150 g"},
+  {id:"r21", name:"Fenchel-Ofengemüse mit Weißen Bohnen & Walnüssen", protein:"Tofu", mealPrep:true, ingredients:"Fenchel, Kürbis, Karotten 300 g · Weiße Bohnen 200–300 g · Walnüsse"}
 ];
 let recipePool = DEFAULT_RECIPE_POOL.map(r=>({...r}));
 
@@ -563,13 +675,25 @@ function renderNav(){
     {id:"mehr", label:"Mehr", icon:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'}
   ];
   const nav = document.getElementById("bottomNav");
-  nav.innerHTML = tabs.map(t=>`<button data-id="${t.id}" class="${t.id==='heute'?'active':''}"><svg viewBox="0 0 24 24">${t.icon}</svg>${t.label}</button>`).join("");
+  nav.innerHTML = '<div class="nav-indicator" id="navIndicator"></div>' +
+    tabs.map(t=>`<button data-id="${t.id}" class="${t.id==='heute'?'active':''}"><svg viewBox="0 0 24 24">${t.icon}</svg>${t.label}</button>`).join("");
   nav.querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>switchScreen(b.dataset.id)));
+  requestAnimationFrame(moveNavIndicator);
+  window.addEventListener("resize", moveNavIndicator);
+}
+function moveNavIndicator(){
+  const nav = document.getElementById("bottomNav");
+  const active = nav.querySelector("button.active");
+  const indicator = document.getElementById("navIndicator");
+  if(!active || !indicator) return;
+  indicator.style.width = active.offsetWidth + "px";
+  indicator.style.transform = `translateX(${active.offsetLeft}px)`;
 }
 function switchScreen(id){
   document.querySelectorAll("#bottomNav button").forEach(b=>b.classList.toggle("active", b.dataset.id===id));
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById("screen-"+id).classList.add("active");
+  moveNavIndicator();
   if(id==="heute") renderHeute();
   if(id==="fortschritt") renderProfile();
 }
@@ -577,44 +701,68 @@ document.getElementById("openSettings").addEventListener("click", ()=>{
   document.querySelectorAll("#bottomNav button").forEach(b=>b.classList.remove("active"));
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById("screen-settings").classList.add("active");
+  document.getElementById("navIndicator").style.width = "0px";
 });
 
 // ---------- Rezept-Auswahl ----------
+// Der Rezept-Pool ist generisch (kein Rezept ist fest "Mittag" oder "Abend") —
+// jedes Rezept kann für beide Slots verwendet werden. Einschränkungen:
+// - Mo–Fr Mittag muss meal-prep-tauglich sein (Lenny & Luis nehmen es mit in die Schule)
+// - Hähnchen-Rezepte nur am Dienstag
+// - am selben Tag wird dasselbe Rezept nicht doppelt verwendet (Mittag ≠ Abend)
 function pickRecipe(pool, excludeIds){
   const filtered = pool.filter(r=>!excludeIds.includes(r.id));
   const source = filtered.length ? filtered : pool;
   if(!source.length) return null;
   return source[Math.floor(Math.random()*source.length)];
 }
-function poolFor(day, slotType){
+function poolFor(day, slotType, otherSlotId){
   const weekday = isWeekday(day);
-  let pool = recipePool.filter(r=>r.mealType===slotType && (!weekday || slotType!=="mittag" || r.mealPrep));
-  if(day==="Dienstag" && slotType==="mittag"){
-    const chicken = recipePool.filter(r=>r.mealType==="mittag" && r.protein==="Hähnchen");
+  const isTuesday = day==="Dienstag";
+  let pool = recipePool.filter(r=>{
+    if(otherSlotId && r.id===otherSlotId) return false;              // nicht 2x am selben Tag
+    if(r.protein==="Hähnchen" && !isTuesday) return false;            // Hähnchen nur Dienstag
+    if(weekday && slotType==="mittag" && !r.mealPrep) return false;   // Mo–Fr Mittag: meal-prep-tauglich
+    return true;
+  });
+  if(isTuesday && slotType==="mittag"){
+    const chicken = pool.filter(r=>r.protein==="Hähnchen");
     if(chicken.length) pool = chicken;
   }
-  if(!pool.length) pool = recipePool.filter(r=>r.mealType===slotType);
+  if(!pool.length){
+    // Fallback: Meal-Prep-Zwang lockern, aber Hähnchen-Regel & Tagesdopplung weiter beachten
+    pool = recipePool.filter(r=>(!otherSlotId || r.id!==otherSlotId) && (r.protein!=="Hähnchen" || isTuesday));
+  }
+  if(!pool.length) pool = recipePool.filter(r=>!otherSlotId || r.id!==otherSlotId);
+  if(!pool.length) pool = recipePool;
   return pool;
 }
 function generateWeek(){
   days.forEach(day=>{
     if(state.lockedDays[day] && state.weekPlan[day]) return;
-    const mittag = pickRecipe(poolFor(day,"mittag"), state.recentUsed);
+    const mittag = pickRecipe(poolFor(day,"mittag",null), state.recentUsed);
     if(mittag) state.recentUsed.push(mittag.id);
-    const abend = pickRecipe(poolFor(day,"abend"), state.recentUsed);
+    const abend = pickRecipe(poolFor(day,"abend", mittag?mittag.id:null), state.recentUsed);
     if(abend) state.recentUsed.push(abend.id);
     if(state.recentUsed.length>10) state.recentUsed = state.recentUsed.slice(-10);
     state.weekPlan[day] = {mittag: mittag?mittag.id:null, abend: abend?abend.id:null};
   });
   persistPlan();
 }
-function swapMeal(day, slotType){
-  const exclude = [...state.recentUsed];
-  const current = state.weekPlan[day] ? state.weekPlan[day][slotType] : null;
-  if(current) exclude.push(current);
-  const pick = pickRecipe(poolFor(day, slotType), exclude);
-  if(!pick) return;
+function swapMeal(day, slotType, chosenId){
   if(!state.weekPlan[day]) state.weekPlan[day] = {mittag:null, abend:null};
+  const otherSlot = slotType==="mittag" ? "abend" : "mittag";
+  const otherId = state.weekPlan[day][otherSlot];
+  let pick;
+  if(chosenId){
+    pick = recipeById(chosenId);
+  }else{
+    const exclude = [...state.recentUsed];
+    const current = state.weekPlan[day][slotType];
+    if(current) exclude.push(current);
+    pick = pickRecipe(poolFor(day, slotType, otherId), exclude);
+  }
+  if(!pick) return;
   state.weekPlan[day][slotType] = pick.id;
   state.recentUsed.push(pick.id);
   if(state.recentUsed.length>10) state.recentUsed = state.recentUsed.slice(-10);
@@ -650,7 +798,7 @@ function renderHeute(){
     famHtml += `<div class="plan-row">
       <div class="body">
         <div class="mealtype">${m.label}</div>
-        <div class="title">${m.r?m.r.name:'–'}</div>
+        <div class="title" ${m.r?`data-open-recipe="${m.r.id}" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;"`:''}>${m.r?m.r.name:'–'}</div>
         <div class="amount">${m.r?m.r.ingredients:''}</div>
         <div class="expand-toggle" data-toggle="${pKey}">Portionen pro Person anzeigen ▾</div>
         <div class="person-portions" id="portions-${pKey}">${personPortionsHtml(day, pKey)}</div>
@@ -658,6 +806,7 @@ function renderHeute(){
     </div>`;
   });
   famEl.innerHTML = famHtml;
+  famEl.querySelectorAll("[data-open-recipe]").forEach(t=>t.addEventListener("click", ()=>openRecipeDetail(t.dataset.openRecipe)));
   famEl.querySelectorAll("[data-toggle]").forEach(t=>t.addEventListener("click", ()=>{
     document.getElementById("portions-"+t.dataset.toggle).classList.toggle("open");
   }));
@@ -735,7 +884,7 @@ function renderPlan(){
   if(weekday){ const bb = fixedFor(currentDay, "brotbox"); html += `<div class="plan-row"><div class="body"><div class="mealtype">Schul-Brotbox (Lenny & Luis)</div><div class="title">${bb.title}</div><div class="amount">${bb.amount}</div></div></div>`; }
 
   html += `<div class="plan-row">
-      <div class="body"><div class="mealtype">Mittag${weekday?' (Meal-Prep)':''}</div><div class="title">${mittagR?mittagR.name:'–'}</div><div class="amount">${mittagR?mittagR.ingredients:''}</div></div>
+      <div class="body"><div class="mealtype">Mittag${weekday?' (Meal-Prep)':''}</div><div class="title" ${mittagR?`data-open-recipe="${mittagR.id}" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;"`:''}>${mittagR?mittagR.name:'–'}</div><div class="amount">${mittagR?mittagR.ingredients:''}</div></div>
       <div class="icon-only-btn" data-swap="mittag" title="Rezept tauschen"><svg viewBox="0 0 24 24">${SWAP_SVG}</svg></div>
     </div>`;
 
@@ -743,14 +892,16 @@ function renderPlan(){
   html += `<div class="plan-row"><div class="body"><div class="mealtype">Nachmittag</div><div class="title">${n.title}</div><div class="amount">${n.amount}</div></div></div>`;
 
   html += `<div class="plan-row">
-      <div class="body"><div class="mealtype">Abend</div><div class="title">${abendR?abendR.name:'–'}</div><div class="amount">${abendR?abendR.ingredients:''}</div></div>
+      <div class="body"><div class="mealtype">Abend</div><div class="title" ${abendR?`data-open-recipe="${abendR.id}" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;"`:''}>${abendR?abendR.name:'–'}</div><div class="amount">${abendR?abendR.ingredients:''}</div></div>
       <div class="icon-only-btn" data-swap="abend" title="Rezept tauschen"><svg viewBox="0 0 24 24">${SWAP_SVG}</svg></div>
     </div>`;
 
   list.innerHTML = html;
+  list.querySelectorAll("[data-open-recipe]").forEach(t=>t.addEventListener("click", ()=>openRecipeDetail(t.dataset.openRecipe)));
   list.querySelectorAll("[data-swap]").forEach(btn=>btn.addEventListener("click", ()=>{
-    swapMeal(currentDay, btn.dataset.swap);
-    renderPlan();
+    btn.classList.add("spinning");
+    setTimeout(()=>btn.classList.remove("spinning"), 500);
+    openSwapPicker(currentDay, btn.dataset.swap);
   }));
 }
 
@@ -833,29 +984,137 @@ function renderRecipePool(){
   document.getElementById("poolCount").textContent = recipePool.length;
   const el = document.getElementById("recipePoolList");
   if(!recipePool.length){ el.innerHTML = '<div class="empty">Noch keine Rezepte im Pool.</div>'; return; }
-  el.innerHTML = recipePool.map(r=>`
-    <div class="recipe-card">
+  el.innerHTML = recipePool.map((r,i)=>`
+    <div class="recipe-card item-in" style="animation-delay:${Math.min(i*35,300)}ms;" data-open="${r.id}">
       <div class="top">
-        <div><div class="name">${r.name}</div><div class="meta">${r.mealType==='mittag'?'Mittag':'Abend'} · ${r.protein} ${r.mealPrep?'· Meal-Prep-tauglich':''}</div></div>
+        <div><div class="name">${r.name}</div><div class="meta">${r.protein} ${r.mealPrep?'· Meal-Prep-tauglich':''}</div></div>
         <button class="del-btn" data-id="${r.id}"><svg class="icon-btn" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
       </div>
       <div class="ingredients">${r.ingredients}</div>
     </div>`).join("");
-  el.querySelectorAll(".del-btn").forEach(b=>b.addEventListener("click", ()=>{
+  el.querySelectorAll(".del-btn").forEach(b=>b.addEventListener("click", (e)=>{
+    e.stopPropagation();
     recipePool = recipePool.filter(r=>r.id!==b.dataset.id);
     persistPool();
     renderRecipePool();
   }));
+  el.querySelectorAll("[data-open]").forEach(c=>c.addEventListener("click", ()=>openRecipeDetail(c.dataset.open)));
 }
 function addManualRecipe(){
   const name = document.getElementById("rName").value.trim();
   const ingredients = document.getElementById("rIngredients").value.trim();
   if(!name || !ingredients) return;
-  recipePool.push({ id:"r"+Date.now(), name, ingredients, mealType: document.getElementById("rMealType").value, protein: document.getElementById("rProtein").value, mealPrep: document.getElementById("rMealPrep").checked });
+  recipePool.push({ id:"r"+Date.now(), name, ingredients, protein: document.getElementById("rProtein").value, mealPrep: document.getElementById("rMealPrep").checked });
   document.getElementById("rName").value=""; document.getElementById("rIngredients").value="";
   persistPool();
   renderRecipePool();
 }
+
+// ---------- Modal-Helfer (Bottom-Sheets) ----------
+function openModal(id){
+  const el = document.getElementById(id);
+  el.style.display = "flex";
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add("open")));
+}
+function closeModal(id){
+  const el = document.getElementById(id);
+  el.classList.remove("open");
+  setTimeout(()=>{ if(!el.classList.contains("open")) el.style.display = "none"; }, 380);
+}
+["recipeModalBackdrop","swapModalBackdrop"].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener("click", (e)=>{ if(e.target===el) closeModal(id); });
+});
+document.getElementById("recipeModalClose").addEventListener("click", ()=>closeModal("recipeModalBackdrop"));
+document.getElementById("swapModalClose").addEventListener("click", ()=>closeModal("swapModalBackdrop"));
+
+// ---------- Rezept-Detail: KI erstellt vollständiges Rezept ----------
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function renderFullRecipe(r){
+  const f = r.fullRecipe;
+  document.getElementById("recipeModalTitle").textContent = r.name;
+  const body = document.getElementById("recipeModalBody");
+  if(!f){ body.innerHTML = '<div class="empty">Kein Rezept geladen.</div>'; return; }
+  body.innerHTML = `
+    <h4>Zutaten (für 4 Portionen)</h4>
+    <ul>${(f.ingredients||[]).map(i=>`<li>${escapeHtml(i.menge||"")} ${escapeHtml(i.name||"")}</li>`).join("")}</ul>
+    <h4>Zubereitung</h4>
+    <ol>${(f.steps||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join("")}</ol>
+    ${f.tipp ? `<h4>Tipp</h4><p>${escapeHtml(f.tipp)}</p>` : ""}
+    <p class="note" style="margin-top:14px;">KI-generiert auf Basis der Haushaltsregeln — bitte vor dem Kochen kurz gegenchecken.</p>`;
+}
+async function openRecipeDetail(recipeId){
+  const r = recipeById(recipeId);
+  if(!r) return;
+  document.getElementById("recipeModalTitle").textContent = r.name;
+  openModal("recipeModalBackdrop");
+
+  if(r.fullRecipe){ renderFullRecipe(r); return; }
+
+  const body = document.getElementById("recipeModalBody");
+  body.innerHTML = '<div class="note" style="display:flex;align-items:center;gap:8px;"><span class="spinner"></span> KI erstellt das vollständige Rezept mit Zutaten & Mengen…</div>';
+
+  if(!state.groqKey){
+    body.innerHTML = '<div class="note" style="color:var(--danger);">Kein Groq-Key hinterlegt. Bitte zuerst unter Einstellungen eintragen, dann öffne dieses Rezept erneut.</div>';
+    return;
+  }
+
+  const prompt = `Erstelle das vollständige, ausführliche Rezept für folgendes Gericht: "${r.name}"
+Bisherige Kurz-Zutatenliste als grober Rahmen (Mengen dürfen sinnvoll verfeinert werden): ${r.ingredients}
+Protein-Basis: ${r.protein}.
+
+Verbotene Zutaten im Haushalt (niemals verwenden, sinnvoll ersetzen): ${HOUSEHOLD_RULES.join(", ")}.
+Erstelle eine vollständige, genaue Zutatenliste mit exakten Mengenangaben für 4 Portionen (Familie: 2 Erwachsene, 2 Jugendliche) sowie eine klare Schritt-für-Schritt-Zubereitung (kurze, präzise Schritte, keine Romane).
+
+Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
+{"ingredients":[{"menge":"z. B. 250 g","name":"Zutat"}], "steps":["Schritt 1...", "Schritt 2..."], "tipp":"ein kurzer praktischer Tipp, optional leer"}`;
+
+  try{
+    const text = await callGroq(prompt, 1500);
+    const parsed = extractJson(text);
+    r.fullRecipe = parsed;
+    persistPool();
+    renderFullRecipe(r);
+  }catch(err){
+    body.innerHTML = `<div class="note" style="color:var(--danger);">Rezept konnte nicht erstellt werden: ${err.message}.</div>`;
+  }
+}
+
+// ---------- Manueller Rezept-Tausch ----------
+let swapContext = null; // {day, slotType}
+function openSwapPicker(day, slotType){
+  swapContext = {day, slotType};
+  const other = state.weekPlan[day] ? state.weekPlan[day][slotType==="mittag"?"abend":"mittag"] : null;
+  document.getElementById("swapModalTitle").textContent = "Rezept tauschen — " + (slotType==="mittag"?"Mittag":"Abend") + ", " + day;
+  const eligible = poolFor(day, slotType, other);
+  const currentId = state.weekPlan[day] ? state.weekPlan[day][slotType] : null;
+  const listEl = document.getElementById("swapPickerList");
+  if(!eligible.length){
+    listEl.innerHTML = '<div class="empty">Keine passenden Rezepte im Pool gefunden.</div>';
+  }else{
+    listEl.innerHTML = eligible.map((r,i)=>`
+      <div class="swap-option item-in ${r.id===currentId?'current':''}" style="animation-delay:${Math.min(i*30,240)}ms;" data-pick="${r.id}">
+        <div><div class="so-name">${r.name}</div><div class="so-meta">${r.protein}${r.mealPrep?' · Meal-Prep':''}</div></div>
+        ${r.id===currentId?'<svg class="icon-btn" viewBox="0 0 24 24" style="stroke:var(--accent);"><path d="M9 11l3 3L22 4"/></svg>':''}
+      </div>`).join("");
+    listEl.querySelectorAll("[data-pick]").forEach(el=>el.addEventListener("click", ()=>{
+      swapMeal(swapContext.day, swapContext.slotType, el.dataset.pick);
+      closeModal("swapModalBackdrop");
+      renderPlan();
+      if(swapContext.day===todayName()) renderHeute();
+    }));
+  }
+  openModal("swapModalBackdrop");
+}
+document.getElementById("swapRandomBtn").addEventListener("click", ()=>{
+  if(!swapContext) return;
+  swapMeal(swapContext.day, swapContext.slotType, null);
+  closeModal("swapModalBackdrop");
+  renderPlan();
+  if(swapContext.day===todayName()) renderHeute();
+});
 
 // ---------- Groq-Aufrufe ----------
 async function callGroq(prompt, maxTokens){
@@ -907,7 +1166,7 @@ Vorlieben & Kontext der Familie (nur zur Orientierung bei Mengen/Zutatenwahl, NI
 - Übliche Vorratszutaten im Haushalt, bevorzugt darauf zurückgreifen, wenn es zum Gericht passt: Reis, Quinoa, Buchweizen, Süßkartoffel, Kartoffeln, Kichererbsen, rote/schwarze Linsen, Kidneybohnen, weiße Bohnen, Natur-/Räuchertofu, Eier, Kokosmilch, Tahin, Cashew-Creme, Zucchini, Paprika, Karotten, Blumenkohl, Fenchel, Kürbis, Oliven-/Leinöl, Walnüsse, Mandeln, Kürbiskerne, Chiasamen.
 
 Antworte NUR mit einem JSON-Objekt, keine Erklärung außerhalb des JSON, kein Markdown:
-{"name":"...", "istPassend": true/false, "hinweis":"kurzer Hinweis, leer wenn istPassend true und keine Anmerkung nötig", "mealType":"mittag oder abend", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":"Zutaten mit Mengen für 4 Portionen als kurzer String, leer wenn istPassend false"}`;
+{"name":"...", "istPassend": true/false, "hinweis":"kurzer Hinweis, leer wenn istPassend true und keine Anmerkung nötig", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":"Zutaten mit Mengen für 4 Portionen als kurzer String, leer wenn istPassend false"}`;
   try{
     const text = await callGroq(prompt, 900);
     const parsed = extractJson(text);
@@ -916,7 +1175,6 @@ Antworte NUR mit einem JSON-Objekt, keine Erklärung außerhalb des JSON, kein M
       return;
     }
     document.getElementById("rName").value = parsed.name || idea;
-    document.getElementById("rMealType").value = parsed.mealType==="abend" ? "abend" : "mittag";
     document.getElementById("rProtein").value = ["Tofu","Hähnchen","Ei","Gemischt"].includes(parsed.protein) ? parsed.protein : "Gemischt";
     document.getElementById("rIngredients").value = parsed.ingredients || "";
     document.getElementById("rMealPrep").checked = !!parsed.mealPrepGeeignet;
@@ -948,7 +1206,7 @@ Skaliere die Zutatenmengen sinngemäß für 4 Personen:
 - Papa (45, höchster Proteinbedarf): größte Portion.
 - Mama (44, Fettabbau): kleinere Kohlenhydrat-/Fettportion, mehr Gemüse.
 Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
-{"name":"...", "mealType":"mittag oder abend", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "baseIngredients":"kurzer String mit Zutaten für 4 Portionen", "violations":["verbotene Zutaten, leer wenn keine"], "scaling":{"lenny":"...","luis":"...","papa":"...","mama":"..."}}`;
+{"name":"...", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "baseIngredients":"kurzer String mit Zutaten für 4 Portionen", "violations":["verbotene Zutaten, leer wenn keine"], "scaling":{"lenny":"...","luis":"...","papa":"...","mama":"..."}}`;
 
   try{
     const text = await callGroq(prompt, 900);
@@ -958,7 +1216,7 @@ Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
     resultEl.innerHTML = `
       <div class="import-result">
         <div class="name" style="font-size:14px;font-weight:700;">${parsed.name||"Rezept"}</div>
-        <div class="meta" style="font-size:11.5px;color:var(--text-dim);margin-top:3px;">${parsed.mealType==='mittag'?'Mittag':'Abend'} · ${parsed.protein||''} ${parsed.mealPrepGeeignet?'· Meal-Prep-tauglich':''}</div>
+        <div class="meta" style="font-size:11.5px;color:var(--text-dim);margin-top:3px;">${parsed.protein||''} ${parsed.mealPrepGeeignet?'· Meal-Prep-tauglich':''}</div>
         <div class="ingredients" style="margin-top:8px;">${parsed.baseIngredients||''}</div>
         ${hasViolations ? `<div class="warn-line"><span>Enthält ggf. verbotene Zutaten: ${parsed.violations.join(", ")} — bitte vor Übernahme prüfen.</span></div>` : `<div class="warn-line" style="color:var(--accent);"><span>Keine verbotenen Zutaten erkannt.</span></div>`}
         <div class="scale-block">
@@ -970,7 +1228,7 @@ Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
         <button class="btn primary small" id="acceptImportBtn" style="margin-top:12px;">Zum Pool hinzufügen</button>
       </div>`;
     document.getElementById("acceptImportBtn").addEventListener("click", ()=>{
-      recipePool.push({ id:"r"+Date.now(), name: parsed.name||"Importiertes Rezept", mealType: parsed.mealType==="abend"?"abend":"mittag", protein: parsed.protein||"Gemischt", mealPrep: !!parsed.mealPrepGeeignet, ingredients: parsed.baseIngredients||"" });
+      recipePool.push({ id:"r"+Date.now(), name: parsed.name||"Importiertes Rezept", protein: parsed.protein||"Gemischt", mealPrep: !!parsed.mealPrepGeeignet, ingredients: parsed.baseIngredients||"" });
       persistPool();
       renderRecipePool();
       resultEl.innerHTML = '<div class="note" style="color:var(--accent);">Zum Pool hinzugefügt.</div>';
@@ -1107,6 +1365,92 @@ function afterLogin(){
   document.getElementById("importBtn").addEventListener("click", analyzeRecipeLink);
   document.getElementById("elaborateBtn").addEventListener("click", elaborateIdea);
 }
+
+// ---------- PWA-Installation ----------
+// Service Worker registrieren (Voraussetzung für die Installierbarkeit auf Android/Chrome).
+// Bewusst ohne Offline-Cache, siehe sw.js.
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(err=>console.warn("Service Worker nicht registriert:", err));
+  });
+}
+
+function isStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function isIOS(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+}
+
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById("installBtn");
+const installModal = document.getElementById("installModalBackdrop");
+const installModalActions = document.getElementById("installModalActions");
+
+function updateInstallUI(){
+  if(isStandalone()){
+    installBtn.style.display = "none";
+    return;
+  }
+  // Auf iOS gibt es kein beforeinstallprompt-Event — Button trotzdem zeigen,
+  // Klick öffnet dann die manuelle "Zum Home-Bildschirm"-Anleitung.
+  installBtn.style.display = (deferredInstallPrompt || isIOS()) ? "flex" : "none";
+}
+
+function renderInstallModalActions(){
+  if(deferredInstallPrompt){
+    installModalActions.innerHTML = '<button class="btn primary" id="installNowBtn" style="width:100%; justify-content:center;">Jetzt installieren</button>';
+    document.getElementById("installNowBtn").addEventListener("click", async ()=>{
+      closeModal("installModalBackdrop");
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if(outcome === "accepted"){ deferredInstallPrompt = null; updateInstallUI(); }
+    });
+  }else if(isIOS()){
+    installModalActions.innerHTML = `
+      <div class="note" style="text-align:left; background:rgba(255,255,255,0.5); padding:12px 14px; border-radius:14px;">
+        1. Tippe unten auf das <b>Teilen-Symbol</b> <svg class="icon-btn" viewBox="0 0 24 24" style="stroke:var(--text-dim); vertical-align:-3px;"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg> in Safari<br>
+        2. Wähle <b>"Zum Home-Bildschirm"</b><br>
+        3. Tippe auf <b>"Hinzufügen"</b>
+      </div>`;
+  }else{
+    installModalActions.innerHTML = '<div class="note">Öffne die Seite in Chrome oder einem anderen Browser mit Installations-Unterstützung, um sie als App hinzuzufügen.</div>';
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  updateInstallUI();
+});
+window.addEventListener("appinstalled", ()=>{
+  deferredInstallPrompt = null;
+  updateInstallUI();
+  closeModal("installModalBackdrop");
+});
+
+installBtn.addEventListener("click", ()=>{
+  renderInstallModalActions();
+  openModal("installModalBackdrop");
+});
+document.getElementById("installModalDismiss").addEventListener("click", ()=>closeModal("installModalBackdrop"));
+installModal.addEventListener("click", (e)=>{ if(e.target===installModal) closeModal("installModalBackdrop"); });
+
+function maybeShowInstallPopupOnce(){
+  if(isStandalone()) return;
+  if(localStorage.getItem("fep_installPromptShown")) return;
+  // kurze Verzögerung, damit die Login-Gate-Auswahl / erste Ansicht nicht überlagert wird
+  setTimeout(()=>{
+    if(isStandalone()) return;
+    localStorage.setItem("fep_installPromptShown", "1");
+    renderInstallModalActions();
+    openModal("installModalBackdrop");
+  }, 1400);
+}
+
+updateInstallUI();
+maybeShowInstallPopupOnce();
+
 init();
 </script>
 </body>
