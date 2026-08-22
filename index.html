@@ -268,16 +268,18 @@
   }
   .modal-backdrop.open{ display:flex; background:rgba(10,20,18,0.35); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
   .modal-sheet{
-    width:100%; max-width:520px; max-height:82vh; overflow-y:auto;
+    width:100%; max-width:520px; max-height:82vh;
+    display:flex; flex-direction:column; overflow:hidden;
     border-radius:28px 28px 0 0; padding:10px 20px calc(24px + env(safe-area-inset-bottom));
     transform:translateY(100%); transition:transform .38s cubic-bezier(.22,1,.36,1);
-    background:var(--glass-strong);
+    background:var(--glass-strong); touch-action:none;
   }
+  .modal-sheet.dragging{ transition:none; }
   .modal-backdrop.open .modal-sheet{ transform:translateY(0); }
-  .modal-handle{ width:40px; height:4px; border-radius:99px; background:var(--glass-border); margin:0 auto 14px; }
-  .modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .modal-handle{ width:40px; height:4px; border-radius:99px; background:var(--glass-border); margin:0 auto 14px; flex-shrink:0; cursor:grab; }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-shrink:0; touch-action:none; cursor:grab; }
   .modal-title{ font-size:16px; font-weight:800; }
-  .modal-body{ font-size:13.5px; line-height:1.7; }
+  .modal-body{ font-size:13.5px; line-height:1.7; overflow-y:auto; touch-action:pan-y; -webkit-overflow-scrolling:touch; flex:1; min-height:0; }
   .modal-body h4{ font-size:12px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim); margin:14px 0 6px; }
   .modal-body h4:first-child{ margin-top:0; }
   .modal-body ul{ padding-left:18px; }
@@ -674,7 +676,7 @@ const DB = {
   }
 };
 
-const CHECK_SVG = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 const LOCK_OPEN = '<path d="M8 11V7a4 4 0 0 1 8 0"/><rect x="4" y="11" width="16" height="10" rx="2"/>';
 const LOCK_CLOSED = '<path d="M8 11V7a4 4 0 0 1 8 0v4"/><rect x="4" y="11" width="16" height="10" rx="2"/>';
 const SWAP_SVG = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>';
@@ -783,13 +785,13 @@ function persistLocked(){ DB.set("lockedDays", state.lockedDays, true); }
 function persistFixed(){ DB.set("fixedOverrides", state.fixedOverrides, true); }
 
 // ---------- Bottom Nav ----------
-const NAV_TABS = ["heute","woche","rezepte","fortschritt","mehr"];
+const NAV_TABS = ["heute","woche","fortschritt","rezepte","mehr"];
 function renderNav(){
   const tabs = [
     {id:"heute", label:"Heute", icon:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><circle cx="12" cy="15" r="1.5"/>'},
     {id:"woche", label:"Woche", icon:'<path d="M3 12h18M3 6h18M3 18h18"/>'},
-    {id:"rezepte", label:"Rezepte", icon:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'},
     {id:"fortschritt", label:"Fortschritt", icon:'<path d="M3 3v18h18"/><path d="M7 15l4-6 3 3 5-8"/>'},
+    {id:"rezepte", label:"Rezepte", icon:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'},
     {id:"mehr", label:"Mehr", icon:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'}
   ];
   const nav = document.getElementById("bottomNav");
@@ -1032,6 +1034,33 @@ document.getElementById("openPhotoScan").addEventListener("click", ()=>document.
 document.getElementById("photoScanModalClose").addEventListener("click", ()=>closeModal("photoScanModalBackdrop"));
 document.getElementById("photoScanModalBackdrop").addEventListener("click", (e)=>{ if(e.target.id==="photoScanModalBackdrop") closeModal("photoScanModalBackdrop"); });
 
+// Handyfotos sind oft 3-8 MB als Rohdatei — als Base64 an die API gesendet kann das
+// Limits sprengen oder sehr lange dauern. Deshalb vor dem Senden auf eine vernünftige
+// Auflösung herunterskalieren (per <canvas>), das reicht für die Bilderkennung locker.
+function compressImageFile(file, maxDim=1024, quality=0.78){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error("Datei konnte nicht gelesen werden"));
+    reader.onload = ()=>{
+      img.onerror = ()=>reject(new Error("Bild konnte nicht geladen werden"));
+      img.onload = ()=>{
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width*scale); height = Math.round(height*scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 document.getElementById("photoScanInput").addEventListener("change", async (e)=>{
   const file = e.target.files[0];
   e.target.value = ""; // gleiche Datei danach erneut auswählbar machen
@@ -1041,51 +1070,56 @@ document.getElementById("photoScanInput").addEventListener("change", async (e)=>
     document.getElementById("photoScanModalBody").innerHTML = '<div class="note" style="color:var(--danger);">Kein Groq-Key hinterlegt. Bitte zuerst unter Einstellungen eintragen.</div>';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = async ()=>{
-    const dataUrl = reader.result;
-    openModal("photoScanModalBackdrop");
-    const body = document.getElementById("photoScanModalBody");
-    body.innerHTML = `<img class="photo-preview" src="${dataUrl}"><div class="note" style="display:flex;align-items:center;gap:8px;"><span class="spinner"></span> KI erkennt das Essen und schätzt die Nährwerte…</div>`;
+  openModal("photoScanModalBackdrop");
+  const body = document.getElementById("photoScanModalBody");
+  body.innerHTML = '<div class="note" style="display:flex;align-items:center;gap:8px;"><span class="spinner"></span> Bild wird vorbereitet…</div>';
 
-    const prompt = `Analysiere das Essen auf diesem Foto. Schätze realistisch die Portionsgröße anhand des Bildes.
+  let dataUrl;
+  try{
+    dataUrl = await compressImageFile(file);
+  }catch(err){
+    body.innerHTML = `<div class="note" style="color:var(--danger);">Foto konnte nicht verarbeitet werden: ${err.message}.</div>`;
+    return;
+  }
+
+  body.innerHTML = `<img class="photo-preview" src="${dataUrl}"><div class="note" style="display:flex;align-items:center;gap:8px;"><span class="spinner"></span> KI erkennt das Essen und schätzt die Nährwerte…</div>`;
+
+  const prompt = `Analysiere das Essen auf diesem Foto. Schätze realistisch die Portionsgröße anhand des Bildes.
 Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
 {"name":"kurze Bezeichnung des Gerichts/Lebensmittels", "geschaetztePortion":"z. B. ca. 350 g", "kcal": Zahl, "protein": Zahl in g, "carbs": Zahl in g, "fat": Zahl in g, "hinweis":"kurzer Hinweis zur Unsicherheit der Schätzung"}`;
 
-    try{
-      const text = await callGroqVision(prompt, dataUrl);
-      const parsed = extractJson(text);
-      body.innerHTML = `
-        <img class="photo-preview" src="${dataUrl}">
-        <div class="import-result" style="margin-top:0;">
-          <div class="name" style="font-size:14.5px;font-weight:800;">${escapeHtml(parsed.name||"Erkanntes Essen")}</div>
-          <div class="meta" style="font-size:11.5px;color:var(--text-dim);margin-top:3px;">${escapeHtml(parsed.geschaetztePortion||"")}</div>
-          <div class="ingredient-grid" style="margin-top:10px;">
-            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.kcal||0)}</div><div class="ic-name">kcal</div></div>
-            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.protein||0)} g</div><div class="ic-name">Protein</div></div>
-            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.carbs||0)} g</div><div class="ic-name">Kohlenhydrate</div></div>
-            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.fat||0)} g</div><div class="ic-name">Fett</div></div>
-          </div>
-          ${parsed.hinweis ? `<p class="note" style="margin-top:10px;">${escapeHtml(parsed.hinweis)}</p>` : ""}
-          <div class="form-actions" style="margin-top:14px;">
-            <button class="btn primary small" id="acceptPhotoScanBtn">Übernehmen</button>
-            <button class="btn small" id="discardPhotoScanBtn">Verwerfen</button>
-          </div>
-        </div>`;
-      document.getElementById("acceptPhotoScanBtn").addEventListener("click", ()=>{
-        addExtra(currentPerson, profileDay, {
-          name: parsed.name||"Foto-Scan", kcal: Math.round(parsed.kcal||0), protein: Math.round(parsed.protein||0),
-          carbs: Math.round(parsed.carbs||0), fat: Math.round(parsed.fat||0), source:"foto"
-        });
-        closeModal("photoScanModalBackdrop");
-        renderProfile();
+  try{
+    const text = await callGroqVision(prompt, dataUrl);
+    const parsed = extractJson(text);
+    body.innerHTML = `
+      <img class="photo-preview" src="${dataUrl}">
+      <div class="import-result" style="margin-top:0;">
+        <div class="name" style="font-size:14.5px;font-weight:800;">${escapeHtml(parsed.name||"Erkanntes Essen")}</div>
+        <div class="meta" style="font-size:11.5px;color:var(--text-dim);margin-top:3px;">${escapeHtml(parsed.geschaetztePortion||"")}</div>
+        <div class="ingredient-grid" style="margin-top:10px;">
+          <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.kcal||0)}</div><div class="ic-name">kcal</div></div>
+          <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.protein||0)} g</div><div class="ic-name">Protein</div></div>
+          <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.carbs||0)} g</div><div class="ic-name">Kohlenhydrate</div></div>
+          <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.fat||0)} g</div><div class="ic-name">Fett</div></div>
+        </div>
+        ${parsed.hinweis ? `<p class="note" style="margin-top:10px;">${escapeHtml(parsed.hinweis)}</p>` : ""}
+        <div class="form-actions" style="margin-top:14px;">
+          <button class="btn primary small" id="acceptPhotoScanBtn">Übernehmen</button>
+          <button class="btn small" id="discardPhotoScanBtn">Verwerfen</button>
+        </div>
+      </div>`;
+    document.getElementById("acceptPhotoScanBtn").addEventListener("click", ()=>{
+      addExtra(currentPerson, profileDay, {
+        name: parsed.name||"Foto-Scan", kcal: Math.round(parsed.kcal||0), protein: Math.round(parsed.protein||0),
+        carbs: Math.round(parsed.carbs||0), fat: Math.round(parsed.fat||0), source:"foto"
       });
-      document.getElementById("discardPhotoScanBtn").addEventListener("click", ()=>closeModal("photoScanModalBackdrop"));
-    }catch(err){
-      body.innerHTML = `<img class="photo-preview" src="${dataUrl}"><div class="note" style="color:var(--danger);">Erkennung fehlgeschlagen: ${err.message}.</div>`;
-    }
-  };
-  reader.readAsDataURL(file);
+      closeModal("photoScanModalBackdrop");
+      renderProfile();
+    });
+    document.getElementById("discardPhotoScanBtn").addEventListener("click", ()=>closeModal("photoScanModalBackdrop"));
+  }catch(err){
+    body.innerHTML = `<img class="photo-preview" src="${dataUrl}"><div class="note" style="color:var(--danger);">Erkennung fehlgeschlagen: ${err.message}.</div>`;
+  }
 });
 function fixedFor(day, key){
   const ov = state.fixedOverrides[day] && state.fixedOverrides[day][key];
@@ -1372,6 +1406,51 @@ function closeModal(id){
 document.getElementById("recipeModalClose").addEventListener("click", ()=>closeModal("recipeModalBackdrop"));
 document.getElementById("swapModalClose").addEventListener("click", ()=>closeModal("swapModalBackdrop"));
 
+// ---------- Bottom-Sheet nach unten wegziehen (Drag-to-Dismiss) ----------
+// Greifbereich: Handle + Kopfzeile (beide touch-action:none, damit der Browser
+// nicht selbst scrollt/zoomt und wir die Geste übernehmen können). Der Body
+// bleibt normal scrollbar (touch-action:pan-y).
+function enableSheetDrag(backdropId){
+  const backdrop = document.getElementById(backdropId);
+  const sheet = backdrop.querySelector(".modal-sheet");
+  const grabZones = [sheet.querySelector(".modal-handle"), sheet.querySelector(".modal-head")].filter(Boolean);
+  let startY = 0, currentY = 0, dragging = false;
+
+  function onStart(e){
+    dragging = true;
+    startY = (e.touches ? e.touches[0].clientY : e.clientY);
+    currentY = 0;
+    sheet.classList.add("dragging");
+  }
+  function onMove(e){
+    if(!dragging) return;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY);
+    currentY = Math.max(0, y - startY);
+    sheet.style.transform = `translateY(${currentY}px)`;
+  }
+  function onEnd(){
+    if(!dragging) return;
+    dragging = false;
+    sheet.classList.remove("dragging");
+    const threshold = sheet.getBoundingClientRect().height * 0.28;
+    if(currentY > threshold || currentY > 140){
+      sheet.style.transform = "";
+      closeModal(backdropId);
+    }else{
+      sheet.style.transform = "";
+    }
+  }
+  grabZones.forEach(zone=>{
+    zone.addEventListener("touchstart", onStart, {passive:true});
+    zone.addEventListener("mousedown", onStart);
+  });
+  window.addEventListener("touchmove", onMove, {passive:true});
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("touchend", onEnd);
+  window.addEventListener("mouseup", onEnd);
+}
+["recipeModalBackdrop","swapModalBackdrop","installModalBackdrop","photoScanModalBackdrop","foodPickerModalBackdrop"].forEach(enableSheetDrag);
+
 // ---------- Rezept-Detail: KI erstellt vollständiges Rezept ----------
 function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1414,14 +1493,15 @@ async function openRecipeDetail(recipeId){
 Bisherige Kurz-Zutatenliste als grober Rahmen (Mengen dürfen sinnvoll verfeinert werden): ${r.ingredients}
 Protein-Basis: ${r.protein}.
 
-Verbotene Zutaten im Haushalt (niemals verwenden, sinnvoll ersetzen): ${HOUSEHOLD_RULES.join(", ")}.
-Erstelle eine vollständige, genaue Zutatenliste mit exakten Mengenangaben für 4 Portionen (Familie: 2 Erwachsene, 2 Jugendliche) sowie eine klare Schritt-für-Schritt-Zubereitung (kurze, präzise Schritte, keine Romane).
+Verbotene Zutaten im Haushalt (niemals verwenden): ${HOUSEHOLD_RULES.join(", ")}. Prüfe jede Zutat einzeln gegen diese Liste, bevor du antwortest, und ersetze nur was wirklich verboten ist, sinnvoll und geschmacklich passend (z. B. Zucker → Datteln/Ahornsirup, Weizenmehl → Buchweizen-/Hafermehl, Kuhmilch → Hafer-/Mandeldrink).
+
+Erstelle eine vollständige, genaue Zutatenliste mit exakten Mengenangaben in g/ml/Stück für 4 Portionen (Familie: 2 Erwachsene, 2 Jugendliche) — niemals "nach Bedarf" als einzige Angabe (außer Salz/Pfeffer). Gewürze konkret benennen mit Menge. 5–9 Zubereitungsschritte, jeder Schritt eine konkrete Handlung mit Zeit-/Temperaturangabe wo relevant.
 
 Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
 {"ingredients":[{"menge":"z. B. 250 g","name":"Zutat"}], "steps":["Schritt 1...", "Schritt 2..."], "tipp":"ein kurzer praktischer Tipp, optional leer"}`;
 
   try{
-    const text = await callGroq(prompt, 1500);
+    const text = await callGroq(prompt, 1800);
     const parsed = extractJson(text);
     r.fullRecipe = parsed;
     persistPool();
@@ -1524,26 +1604,30 @@ async function elaborateIdea(){
   const btn = document.getElementById("elaborateBtn");
   btn.disabled = true;
   statusEl.innerHTML = '<div class="note" style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span class="spinner"></span> KI arbeitet das vollständige Rezept aus…</div>';
-  const prompt = `Ein Familienmitglied hat folgende Rezept-Idee für den Essensplan eingegeben: "${idea}"
+  const prompt = `Du bist ein präziser Koch-Assistent für eine 4-köpfige Familie. Ein Familienmitglied hat folgende Rezept-Idee für den Essensplan eingegeben: "${idea}"
 
-WICHTIG: Nimm die Idee ernst und wörtlich. Erfinde kein komplett anderes Gericht, nur weil eine Zutat nicht ins Haushaltsschema passt — ersetze in diesem Fall gezielt nur die einzelnen problematischen Zutaten, das Grundgericht (Name, Charakter, Zubereitungsart) muss erkennbar erhalten bleiben.
+REGEL 1 — Idee ernst nehmen: Nimm die Idee wörtlich. Erfinde kein komplett anderes Gericht, nur weil eine Zutat nicht ins Haushaltsschema passt — ersetze in diesem Fall gezielt NUR die einzelnen problematischen Zutaten 1:1 (gleiche Funktion im Gericht), das Grundgericht (Name, Charakter, Zubereitungsart, typische Struktur) muss klar wiedererkennbar bleiben.
 
-Dieser Rezept-Pool ist ausschließlich für herzhafte Mittag-/Abendessen gedacht (Bowls, Pfannen, Suppen, Ofengerichte, Currys usw. — keine Kuchen, Desserts, Süßspeisen oder Getränke).
-- Falls die Idee ein normales herzhaftes Mittag-/Abendessen ist: arbeite sie so nah wie möglich am Original aus, ersetze nur einzelne verbotene Zutaten sinnvoll (setze "istPassend": true) und erstelle das VOLLSTÄNDIGE Rezept mit exakten Mengen für 4 Portionen sowie einer klaren Schritt-für-Schritt-Zubereitung.
-- Falls die Idee grundsätzlich nicht in dieses Schema passt (z. B. Kuchen, Dessert, Süßspeise, Getränk, Frühstücksgebäck): erfinde NICHTS Beliebiges. Setze stattdessen "istPassend": false, lasse "ingredients"/"steps" leer und erkläre in "hinweis" kurz und ehrlich, warum die Idee hier nicht passt.
+REGEL 2 — Nur herzhafte Hauptgerichte: Dieser Pool ist ausschließlich für herzhafte Mittag-/Abendessen (Bowls, Pfannen, Suppen, Ofengerichte, Currys, Aufläufe usw. — keine Kuchen, Desserts, Süßspeisen, Getränke, Frühstücksgebäck).
+- Passt die Idee ins Schema: "istPassend": true, vollständiges Rezept ausarbeiten.
+- Passt sie grundsätzlich nicht: "istPassend": false, "ingredients"/"steps" leer lassen, in "hinweis" kurz und ehrlich erklären warum — NICHTS Beliebiges erfinden.
 
-Verbotene Zutaten im Haushalt (niemals verwenden, bei Bedarf 1:1 sinnvoll ersetzen, z. B. Zucker → Datteln/Ahornsirup, Weizen → Buchweizen/Hafer, Milch → Pflanzendrink): ${HOUSEHOLD_RULES.join(", ")}.
-Hähnchen ist erlaubt, aber nur als Dienstags-Gericht — wenn die Idee kein explizites Hähnchen-Gericht ist, bevorzuge Tofu/Hülsenfrüchte/Ei als Proteinquelle.
+REGEL 3 — Verbotene Zutaten, Zutat für Zutat geprüft: ${HOUSEHOLD_RULES.join(", ")}. Geh bevor du antwortest gedanklich jede einzelne Zutat deines Rezepts durch und prüfe sie gegen diese Liste. Ersetze nur was wirklich verboten ist, sinnvoll und geschmacklich passend (z. B. Zucker → Datteln/Ahornsirup, Weizenmehl → Buchweizen-/Hafermehl, Kuhmilch → Hafer-/Mandeldrink, Fisch → Kichererbsen/Tofu). Hähnchen ist NUR am Dienstag erlaubt — an jedem anderen Tag (unbekannt hier, also generell) bevorzugst du bei Fleischwunsch Tofu/Hülsenfrüchte/Ei, außer die Idee nennt Hähnchen explizit.
 
-Vorlieben & Kontext der Familie (nur zur Orientierung bei Mengen/Zutatenwahl, NICHT um die Idee zu überschreiben):
-- Lenny (17, vegetarisch, Muskelaufbau) und Luis (15, Wachstum & Muskelaufbau) brauchen Mo–Fr meal-prep-taugliche Portionen für die Schule.
-- Papa (Muskelaufbau/Regeneration) hat den höchsten Proteinbedarf, Mama (Fettabbau/Lauftraining) bevorzugt mehr Gemüse, weniger Kohlenhydrate/Fett.
-- Übliche Vorratszutaten im Haushalt, bevorzugt darauf zurückgreifen, wenn es zum Gericht passt: Reis, Quinoa, Buchweizen, Süßkartoffel, Kartoffeln, Kichererbsen, rote/schwarze Linsen, Kidneybohnen, weiße Bohnen, Natur-/Räuchertofu, Eier, Kokosmilch, Tahin, Cashew-Creme, Zucchini, Paprika, Karotten, Blumenkohl, Fenchel, Kürbis, Oliven-/Leinöl, Walnüsse, Mandeln, Kürbiskerne, Chiasamen.
+REGEL 4 — Echtes, konkretes Rezept, keine Plattitüden: Jede Zutat braucht eine reale Mengenangabe in g/ml/Stück (niemals "nach Bedarf" oder "etwas" als einzige Angabe — außer bei Salz/Pfeffer, dort reicht "1 TL"). Gewürze/Kräuter konkret benennen (z. B. "1 TL Kreuzkümmel", nicht nur "Gewürze"). 5–9 Zubereitungsschritte, jeder Schritt eine konkrete Handlung mit Zeit-/Temperaturangabe wo relevant (z. B. "bei 200°C 20 Minuten backen", "5 Minuten anbraten").
 
-Antworte NUR mit einem JSON-Objekt, keine Erklärung außerhalb des JSON, kein Markdown:
-{"name":"...", "istPassend": true/false, "hinweis":"kurzer Hinweis, leer wenn istPassend true und keine Anmerkung nötig", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":[{"menge":"z. B. 250 g","name":"Zutat"}], "steps":["Schritt 1...", "Schritt 2..."], "tipp":"ein kurzer praktischer Tipp, optional leer"}`;
+REGEL 5 — Mengen für 4 Portionen skalieren, Kontext beachten (nur zur Kalibrierung, NICHT um die Idee zu überschreiben):
+- Lenny (17, vegetarisch, Muskelaufbau) & Luis (15, Wachstum/Muskelaufbau): Mo–Fr meal-prep-taugliche Portion für die Schule.
+- Papa (Muskelaufbau/Regeneration): höchster Proteinbedarf. Mama (Fettabbau/Lauftraining): mehr Gemüse, weniger Kohlenhydrate/Fett.
+- Vorratszutaten, die bevorzugt genutzt werden wenn passend: Reis, Quinoa, Buchweizen, Süßkartoffel, Kartoffeln, Kichererbsen, rote/schwarze Linsen, Kidneybohnen, weiße Bohnen, Natur-/Räuchertofu, Eier, Kokosmilch, Tahin, Cashew-Creme, Zucchini, Paprika, Karotten, Blumenkohl, Fenchel, Kürbis, Oliven-/Leinöl, Walnüsse, Mandeln, Kürbiskerne, Chiasamen.
+
+Beispiel für das erwartete Detail-Niveau (nur Format-Vorbild, nicht als Inhalt kopieren):
+{"name":"Kichererbsen-Curry mit Kokosmilch", "istPassend": true, "hinweis":"", "protein":"Tofu", "mealPrepGeeignet": true, "ingredients":[{"menge":"400 g","name":"Kichererbsen, abgetropft"},{"menge":"250 ml","name":"Kokosmilch"},{"menge":"1 TL","name":"Kurkuma"},{"menge":"2","name":"Karotten, gewürfelt"}], "steps":["Zwiebel in etwas Öl 3 Minuten glasig dünsten.","Kurkuma und Kreuzkümmel 1 Minute mit anrösten.","Karotten zugeben, 5 Minuten mitbraten.","Kokosmilch und Kichererbsen zugeben, 15 Minuten köcheln lassen.","Mit Salz und Pfeffer abschmecken."], "tipp":"Schmeckt am nächsten Tag noch intensiver."}
+
+Antworte NUR mit einem JSON-Objekt in exakt diesem Format, keine Erklärung außerhalb des JSON, kein Markdown:
+{"name":"...", "istPassend": true/false, "hinweis":"...", "protein":"Tofu oder Hähnchen oder Ei oder Gemischt", "mealPrepGeeignet": true/false, "ingredients":[{"menge":"...","name":"..."}], "steps":["..."], "tipp":"..."}`;
   try{
-    const text = await callGroq(prompt, 1600);
+    const text = await callGroq(prompt, 2200);
     const parsed = extractJson(text);
     statusEl.innerHTML = "";
     if(parsed.istPassend === false){
