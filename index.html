@@ -98,8 +98,15 @@
   .mp-row{margin-bottom:10px;}
   .mp-row .mp-label{display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim); margin-bottom:4px;}
   .mp-row .mp-label b{color:var(--text);}
-  .progressbar{height:7px; border-radius:99px; background:rgba(20,30,50,0.07); overflow:hidden;}
-  .progressbar .fill{height:100%; border-radius:99px; transition:width .4s ease;}
+  .progressbar{height:9px; border-radius:99px; background:rgba(20,30,50,0.08); overflow:hidden; position:relative;}
+  .progressbar .fill{height:100%; border-radius:99px; transition:width .7s cubic-bezier(.22,1,.36,1); position:relative; overflow:hidden;}
+  .progressbar .fill::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+    transform:translateX(-100%); animation:none;
+  }
+  .progressbar .fill.pulse::after{ animation:barShine 0.9s ease; }
+  @keyframes barShine{ to{ transform:translateX(100%); } }
   .fill.kcal{background:linear-gradient(90deg,#ffb37a,#f28c3c);}
   .fill.protein{background:linear-gradient(90deg,#8fe388,#2f9e63);}
   .fill.carbs{background:linear-gradient(90deg,#7fb8ff,#2f6fb0);}
@@ -125,9 +132,9 @@
 
   .meal{padding:14px 16px; border-radius:var(--radius-sm); background:rgba(255,255,255,0.35); border:1px solid var(--glass-border); margin-bottom:10px; display:flex; gap:12px; align-items:flex-start; transition:.2s ease; box-shadow:0 2px 12px rgba(20,40,35,0.04);}
   .meal:hover{background:rgba(255,255,255,0.55); transform:translateY(-1px);}
-  .meal .check{width:23px; height:23px; border-radius:50%; border:1.5px solid var(--glass-border); flex-shrink:0; margin-top:2px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s; background:#fff;}
-  .meal .check.done{background:var(--accent); border-color:var(--accent);}
-  .meal .check.done svg{stroke:#fff; width:13px; height:13px;}
+  .meal .check{width:26px; height:26px; border-radius:50%; border:2.2px solid rgba(20,30,40,0.28); flex-shrink:0; margin-top:2px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s; background:#fff; box-shadow:0 1px 3px rgba(20,40,35,0.08);}
+  .meal .check.done{background:var(--accent); border-color:var(--accent); box-shadow:0 3px 10px rgba(61,220,132,0.45);}
+  .meal .check.done svg{stroke:#fff; width:15px; height:15px; stroke-width:3.4;}
   .meal .body{flex:1;}
   .meal .mealtype{font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent2); font-weight:700; margin-bottom:3px;}
   .meal .title{font-size:14px; font-weight:700; margin-bottom:4px;}
@@ -314,6 +321,22 @@
   }
   .tipp-box .tb-text{ font-size:12.5px; color:#1d6b45; line-height:1.5; }
 
+  .extra-item{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px; border-radius:14px; background:rgba(255,255,255,0.5); border:1px solid var(--glass-border); margin-bottom:7px; }
+  .extra-item .ei-name{ font-size:13px; font-weight:700; }
+  .extra-item .ei-meta{ font-size:11px; color:var(--text-dim); margin-top:2px; }
+  .extra-item .ei-del{ flex-shrink:0; }
+
+  .food-option{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.4); border:1px solid var(--glass-border); margin-bottom:7px; cursor:pointer; transition:.2s; }
+  .food-option:hover{ background:#fff; }
+  .food-option:active{ transform:scale(0.98); }
+  .food-option .fo-name{ font-size:13px; font-weight:700; }
+  .food-option .fo-meta{ font-size:11px; color:var(--text-dim); margin-top:2px; }
+
+  .gram-input-row{ display:flex; gap:10px; align-items:center; margin-top:14px; }
+  .gram-input-row input{ width:90px; flex:none; text-align:center; }
+
+  .photo-preview{ width:100%; max-height:220px; object-fit:cover; border-radius:16px; margin-bottom:14px; }
+
   .platform-box{ display:flex; gap:12px; align-items:center; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,0.5); border:1px solid var(--glass-border); margin-top:8px; }
   .platform-box img{ width:46px; height:46px; border-radius:10px; object-fit:cover; flex-shrink:0; }
   .platform-box .pb-badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; }
@@ -431,6 +454,43 @@
       <h2 style="margin-bottom:2px;">Mahlzeiten abhaken</h2>
       <div id="profileMeals" style="margin-top:12px;"></div>
       <div style="margin-top:6px;" id="profileProgress"></div>
+    </div>
+    <div class="glass card">
+      <h2><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Extra hinzufügen</h2>
+      <p class="note">Für alles, was nicht im Plan steht — z. B. ein Proteinshake oder ein Snack zwischendurch.</p>
+      <div class="form-actions" style="margin-top:10px;">
+        <button class="btn primary small" id="openPhotoScan"><svg class="icon-btn" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Foto scannen</button>
+        <button class="btn small" id="openFoodPicker"><svg class="icon-btn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Zutat wählen</button>
+      </div>
+      <input type="file" id="photoScanInput" accept="image/*" capture="environment" style="display:none;">
+      <div id="extrasList" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <!-- Foto-Scan-Modal -->
+  <div class="modal-backdrop" id="photoScanModalBackdrop">
+    <div class="modal-sheet glass" id="photoScanModalSheet">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">Foto scannen</div>
+        <div class="icon-only-btn" id="photoScanModalClose"><svg viewBox="0 0 24 24" style="stroke:var(--text-dim);"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <div class="modal-body" id="photoScanModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Lebensmittel-Datenbank-Modal -->
+  <div class="modal-backdrop" id="foodPickerModalBackdrop">
+    <div class="modal-sheet glass" id="foodPickerModalSheet">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">Zutat wählen</div>
+        <div class="icon-only-btn" id="foodPickerModalClose"><svg viewBox="0 0 24 24" style="stroke:var(--text-dim);"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="foodSearchInput" placeholder="Lebensmittel suchen… z. B. Whey, Banane, Reis">
+        <div id="foodPickerList" style="margin-top:10px;"></div>
+      </div>
     </div>
   </div>
 
@@ -679,7 +739,7 @@ const DEFAULT_RECIPE_POOL = [
 ];
 let recipePool = DEFAULT_RECIPE_POOL.map(r=>({...r}));
 
-const state = { checked:{}, shopChecked:{}, lockedDays:{}, weekPlan:{}, recentUsed:[], fixedOverrides:{}, whoAmI:null, groqKey:null, ytApiKey:null };
+const state = { checked:{}, shopChecked:{}, lockedDays:{}, weekPlan:{}, recentUsed:[], fixedOverrides:{}, whoAmI:null, groqKey:null, ytApiKey:null, extras:{} };
 let currentPerson = "lenny";
 let currentDay = todayName();
 let profileDay = todayName();
@@ -687,10 +747,11 @@ let dbReady = false;
 
 // ---------- Persistenz ----------
 async function loadAll(){
-  const [pool, plan, checked, shop, locked, recent, fixed, who, key, ytKey] = await Promise.all([
+  const [pool, plan, checked, shop, locked, recent, fixed, who, key, ytKey, extras] = await Promise.all([
     DB.get("recipePool", true), DB.get("weekPlan", true), DB.get("checked", true),
     DB.get("shopChecked", true), DB.get("lockedDays", true), DB.get("recentUsed", true),
-    DB.get("fixedOverrides", true), DB.get("whoAmI", false), DB.get("groqApiKey", false), DB.get("ytApiKey", false)
+    DB.get("fixedOverrides", true), DB.get("whoAmI", false), DB.get("groqApiKey", false), DB.get("ytApiKey", false),
+    DB.get("extras", true)
   ]);
   if(pool){
     recipePool = pool;
@@ -710,8 +771,10 @@ async function loadAll(){
   if(who){ state.whoAmI = who; currentPerson = who; }
   if(key) state.groqKey = key;
   if(ytKey) state.ytApiKey = ytKey;
+  if(extras) state.extras = extras;
   dbReady = true;
 }
+function persistExtras(){ DB.set("extras", state.extras, true); }
 function persistPool(){ DB.set("recipePool", recipePool, true); }
 function persistPlan(){ DB.set("weekPlan", state.weekPlan, true); DB.set("recentUsed", state.recentUsed, true); }
 function persistChecked(){ DB.set("checked", state.checked, true); }
@@ -839,6 +902,191 @@ function swapMeal(day, slotType, chosenId){
   persistPlan();
 }
 function recipeById(id){ return recipePool.find(r=>r.id===id); }
+
+// ---------- Lebensmittel-Datenbank (für "Extra hinzufügen") ----------
+// Werte pro 100 g bzw. pro 100 ml, gängige Rundungen. Deckt v. a. typische
+// Protein-Shake-Zutaten und Alltags-Basics ab, damit man einzelne Zutaten
+// (statt nur ganzer Rezepte) exakt loggen kann.
+const FOOD_DB = [
+  {name:"Whey-Protein-Pulver", kcal:380, protein:75, carbs:8, fat:6},
+  {name:"Veganes Protein-Pulver (Erbse/Reis)", kcal:370, protein:70, carbs:10, fat:7},
+  {name:"Magermilch", kcal:35, protein:3.4, carbs:5, fat:0.2},
+  {name:"Vollmilch", kcal:64, protein:3.3, carbs:4.8, fat:3.6},
+  {name:"Hafermilch", kcal:45, protein:1, carbs:7, fat:1.5},
+  {name:"Mandelmilch (ungesüßt)", kcal:15, protein:0.5, carbs:0.6, fat:1.2},
+  {name:"Naturjoghurt", kcal:61, protein:3.5, carbs:4.7, fat:3.3},
+  {name:"Griechischer Joghurt (10%)", kcal:115, protein:5.7, carbs:4, fat:9},
+  {name:"Magerquark", kcal:67, protein:12, carbs:4, fat:0.2},
+  {name:"Banane", kcal:89, protein:1.1, carbs:23, fat:0.3},
+  {name:"Apfel", kcal:52, protein:0.3, carbs:14, fat:0.2},
+  {name:"Erdnussbutter", kcal:588, protein:25, carbs:20, fat:50},
+  {name:"Mandeln", kcal:579, protein:21, carbs:22, fat:50},
+  {name:"Walnüsse", kcal:654, protein:15, carbs:14, fat:65},
+  {name:"Haferflocken", kcal:379, protein:13, carbs:67, fat:7},
+  {name:"Honig", kcal:304, protein:0.3, carbs:82, fat:0},
+  {name:"Ahornsirup", kcal:260, protein:0, carbs:67, fat:0},
+  {name:"Datteln", kcal:277, protein:1.8, carbs:75, fat:0.2},
+  {name:"Chiasamen", kcal:486, protein:17, carbs:42, fat:31},
+  {name:"Leinsamen", kcal:534, protein:18, carbs:29, fat:42},
+  {name:"Reis, gekocht", kcal:130, protein:2.7, carbs:28, fat:0.3},
+  {name:"Quinoa, gekocht", kcal:120, protein:4.4, carbs:21, fat:1.9},
+  {name:"Buchweizen, gekocht", kcal:92, protein:3.4, carbs:20, fat:0.6},
+  {name:"Kartoffel, gekocht", kcal:87, protein:1.9, carbs:20, fat:0.1},
+  {name:"Süßkartoffel, gekocht", kcal:90, protein:2, carbs:21, fat:0.1},
+  {name:"Vollkornbrot", kcal:247, protein:9, carbs:41, fat:3.5},
+  {name:"Ei (1 Stück, ca. 60 g)", kcal:93, protein:7.9, carbs:0.6, fat:6.5, perUnit:true},
+  {name:"Hähnchenbrust, gegart", kcal:165, protein:31, carbs:0, fat:3.6},
+  {name:"Naturtofu", kcal:145, protein:15, carbs:2, fat:9},
+  {name:"Räuchertofu", kcal:180, protein:17, carbs:2, fat:11},
+  {name:"Kichererbsen, gekocht", kcal:164, protein:8.9, carbs:27, fat:2.6},
+  {name:"Rote Linsen, gekocht", kcal:116, protein:9, carbs:20, fat:0.4},
+  {name:"Kidneybohnen, gekocht", kcal:127, protein:8.7, carbs:22, fat:0.5},
+  {name:"Avocado", kcal:160, protein:2, carbs:9, fat:15},
+  {name:"Olivenöl", kcal:884, protein:0, carbs:0, fat:100},
+  {name:"Parmesan", kcal:392, protein:35, carbs:3.2, fat:26},
+  {name:"Dunkle Schokolade (70%)", kcal:598, protein:7.8, carbs:45, fat:42},
+  {name:"Kürbiskerne", kcal:559, protein:30, carbs:11, fat:49},
+  {name:"Cashew-Creme/Kerne", kcal:553, protein:18, carbs:30, fat:44}
+];
+
+function getExtrasFor(person, day){ return (state.extras[person+"-"+day]) || []; }
+function addExtra(person, day, item){
+  const key = person+"-"+day;
+  if(!state.extras[key]) state.extras[key] = [];
+  state.extras[key].push({ id:"e"+Date.now(), ...item });
+  persistExtras();
+}
+function removeExtra(person, day, id){
+  const key = person+"-"+day;
+  if(!state.extras[key]) return;
+  state.extras[key] = state.extras[key].filter(e=>e.id!==id);
+  persistExtras();
+}
+function renderExtrasList(){
+  const list = getExtrasFor(currentPerson, profileDay);
+  const el = document.getElementById("extrasList");
+  if(!list.length){ el.innerHTML = ""; return; }
+  el.innerHTML = list.map(e=>`
+    <div class="extra-item">
+      <div><div class="ei-name">${escapeHtml(e.name)}</div><div class="ei-meta">${e.kcal} kcal · ${e.protein}g P · ${e.carbs}g KH · ${e.fat}g F ${e.source==='foto'?' · 📷 Foto-Scan':''}</div></div>
+      <div class="icon-only-btn ei-del" data-del="${e.id}"><svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--danger);"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>
+    </div>`).join("");
+  el.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", ()=>{
+    removeExtra(currentPerson, profileDay, b.dataset.del);
+    renderProfile();
+  }));
+}
+
+// ---------- Zutat-Auswahl (Lebensmittel-Datenbank) ----------
+function renderFoodPickerList(query){
+  const el = document.getElementById("foodPickerList");
+  const q = (query||"").trim().toLowerCase();
+  const results = q ? FOOD_DB.filter(f=>f.name.toLowerCase().includes(q)) : FOOD_DB;
+  if(!results.length){ el.innerHTML = '<div class="empty">Kein Treffer — versuch einen anderen Suchbegriff.</div>'; return; }
+  el.innerHTML = results.map((f,i)=>`
+    <div class="food-option item-in" style="animation-delay:${Math.min(i*25,200)}ms;" data-food="${i}">
+      <div><div class="fo-name">${escapeHtml(f.name)}</div><div class="fo-meta">${f.kcal} kcal · ${f.protein}g P · ${f.carbs}g KH · ${f.fat}g F ${f.perUnit?'(pro Stück)':'(pro 100 g)'}</div></div>
+    </div>`).join("");
+  el.querySelectorAll("[data-food]").forEach(opt=>opt.addEventListener("click", ()=>{
+    openGramInput(results[parseInt(opt.dataset.food)]);
+  }));
+}
+function openGramInput(food){
+  const el = document.getElementById("foodPickerList");
+  const unitLabel = food.perUnit ? "Anzahl" : "Gramm";
+  const defaultAmt = food.perUnit ? 1 : 100;
+  el.innerHTML = `
+    <div class="food-option" style="cursor:default;">
+      <div><div class="fo-name">${escapeHtml(food.name)}</div><div class="fo-meta">${food.kcal} kcal · ${food.protein}g P · ${food.carbs}g KH · ${food.fat}g F ${food.perUnit?'pro Stück':'pro 100 g'}</div></div>
+    </div>
+    <div class="gram-input-row">
+      <input type="text" inputmode="decimal" id="gramAmountInput" value="${defaultAmt}">
+      <span class="note" style="margin:0;">${unitLabel}</span>
+      <button class="btn primary small" id="confirmGramBtn" style="margin-left:auto;">Hinzufügen</button>
+    </div>
+    <button class="btn small" id="backToFoodList" style="width:100%; justify-content:center; margin-top:10px;">Zurück zur Suche</button>`;
+  document.getElementById("backToFoodList").addEventListener("click", ()=>renderFoodPickerList(document.getElementById("foodSearchInput").value));
+  document.getElementById("confirmGramBtn").addEventListener("click", ()=>{
+    const amt = parseFloat(document.getElementById("gramAmountInput").value.replace(",",".")) || 0;
+    const factor = food.perUnit ? amt : (amt/100);
+    addExtra(currentPerson, profileDay, {
+      name: `${food.name} (${amt}${food.perUnit?' Stk':' g'})`,
+      kcal: Math.round(food.kcal*factor), protein: Math.round(food.protein*factor*10)/10,
+      carbs: Math.round(food.carbs*factor*10)/10, fat: Math.round(food.fat*factor*10)/10, source:"db"
+    });
+    closeModal("foodPickerModalBackdrop");
+    renderProfile();
+  });
+}
+document.getElementById("openFoodPicker").addEventListener("click", ()=>{
+  document.getElementById("foodSearchInput").value = "";
+  renderFoodPickerList("");
+  openModal("foodPickerModalBackdrop");
+});
+document.getElementById("foodPickerModalClose").addEventListener("click", ()=>closeModal("foodPickerModalBackdrop"));
+document.getElementById("foodPickerModalBackdrop").addEventListener("click", (e)=>{ if(e.target.id==="foodPickerModalBackdrop") closeModal("foodPickerModalBackdrop"); });
+document.getElementById("foodSearchInput").addEventListener("input", (e)=>renderFoodPickerList(e.target.value));
+
+// ---------- Foto-Scan (KI erkennt Lebensmittel & schätzt Makros) ----------
+document.getElementById("openPhotoScan").addEventListener("click", ()=>document.getElementById("photoScanInput").click());
+document.getElementById("photoScanModalClose").addEventListener("click", ()=>closeModal("photoScanModalBackdrop"));
+document.getElementById("photoScanModalBackdrop").addEventListener("click", (e)=>{ if(e.target.id==="photoScanModalBackdrop") closeModal("photoScanModalBackdrop"); });
+
+document.getElementById("photoScanInput").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = ""; // gleiche Datei danach erneut auswählbar machen
+  if(!file) return;
+  if(!state.groqKey){
+    openModal("photoScanModalBackdrop");
+    document.getElementById("photoScanModalBody").innerHTML = '<div class="note" style="color:var(--danger);">Kein Groq-Key hinterlegt. Bitte zuerst unter Einstellungen eintragen.</div>';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    const dataUrl = reader.result;
+    openModal("photoScanModalBackdrop");
+    const body = document.getElementById("photoScanModalBody");
+    body.innerHTML = `<img class="photo-preview" src="${dataUrl}"><div class="note" style="display:flex;align-items:center;gap:8px;"><span class="spinner"></span> KI erkennt das Essen und schätzt die Nährwerte…</div>`;
+
+    const prompt = `Analysiere das Essen auf diesem Foto. Schätze realistisch die Portionsgröße anhand des Bildes.
+Antworte NUR mit einem JSON-Objekt, keine Erklärung, kein Markdown:
+{"name":"kurze Bezeichnung des Gerichts/Lebensmittels", "geschaetztePortion":"z. B. ca. 350 g", "kcal": Zahl, "protein": Zahl in g, "carbs": Zahl in g, "fat": Zahl in g, "hinweis":"kurzer Hinweis zur Unsicherheit der Schätzung"}`;
+
+    try{
+      const text = await callGroqVision(prompt, dataUrl);
+      const parsed = extractJson(text);
+      body.innerHTML = `
+        <img class="photo-preview" src="${dataUrl}">
+        <div class="import-result" style="margin-top:0;">
+          <div class="name" style="font-size:14.5px;font-weight:800;">${escapeHtml(parsed.name||"Erkanntes Essen")}</div>
+          <div class="meta" style="font-size:11.5px;color:var(--text-dim);margin-top:3px;">${escapeHtml(parsed.geschaetztePortion||"")}</div>
+          <div class="ingredient-grid" style="margin-top:10px;">
+            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.kcal||0)}</div><div class="ic-name">kcal</div></div>
+            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.protein||0)} g</div><div class="ic-name">Protein</div></div>
+            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.carbs||0)} g</div><div class="ic-name">Kohlenhydrate</div></div>
+            <div class="ingredient-chip"><div class="ic-menge">${Math.round(parsed.fat||0)} g</div><div class="ic-name">Fett</div></div>
+          </div>
+          ${parsed.hinweis ? `<p class="note" style="margin-top:10px;">${escapeHtml(parsed.hinweis)}</p>` : ""}
+          <div class="form-actions" style="margin-top:14px;">
+            <button class="btn primary small" id="acceptPhotoScanBtn">Übernehmen</button>
+            <button class="btn small" id="discardPhotoScanBtn">Verwerfen</button>
+          </div>
+        </div>`;
+      document.getElementById("acceptPhotoScanBtn").addEventListener("click", ()=>{
+        addExtra(currentPerson, profileDay, {
+          name: parsed.name||"Foto-Scan", kcal: Math.round(parsed.kcal||0), protein: Math.round(parsed.protein||0),
+          carbs: Math.round(parsed.carbs||0), fat: Math.round(parsed.fat||0), source:"foto"
+        });
+        closeModal("photoScanModalBackdrop");
+        renderProfile();
+      });
+      document.getElementById("discardPhotoScanBtn").addEventListener("click", ()=>closeModal("photoScanModalBackdrop"));
+    }catch(err){
+      body.innerHTML = `<img class="photo-preview" src="${dataUrl}"><div class="note" style="color:var(--danger);">Erkennung fehlgeschlagen: ${err.message}.</div>`;
+    }
+  };
+  reader.readAsDataURL(file);
+});
 function fixedFor(day, key){
   const ov = state.fixedOverrides[day] && state.fixedOverrides[day][key];
   if(ov) return ov;
@@ -1040,13 +1288,39 @@ function renderProfile(){
     const key = currentPerson+"-"+profileDay+"-"+s.slot;
     if(state.checked[key]){ sums.kcal+=s.macros.kcal; sums.protein+=s.macros.protein; sums.carbs+=s.macros.carbs; sums.fat+=s.macros.fat; }
   });
-  const target = p.macros;
-  const pct = (val,tar)=>Math.min(100, Math.round((val/tar)*100));
-  document.getElementById("profileProgress").innerHTML = `
-    <div class="mp-row"><div class="mp-label"><span>Kalorien</span><b>${sums.kcal} / ${target.kcal} kcal</b></div><div class="progressbar"><div class="fill kcal" style="width:${pct(sums.kcal,target.kcal)}%"></div></div></div>
-    <div class="mp-row"><div class="mp-label"><span>Protein</span><b>${sums.protein} / ${target.protein} g</b></div><div class="progressbar"><div class="fill protein" style="width:${pct(sums.protein,target.protein)}%"></div></div></div>
-    <div class="mp-row"><div class="mp-label"><span>Kohlenhydrate</span><b>${sums.carbs} / ${target.carbs} g</b></div><div class="progressbar"><div class="fill carbs" style="width:${pct(sums.carbs,target.carbs)}%"></div></div></div>
-    <div class="mp-row"><div class="mp-label"><span>Fett</span><b>${sums.fat} / ${target.fat} g</b></div><div class="progressbar"><div class="fill fat" style="width:${pct(sums.fat,target.fat)}%"></div></div></div>`;
+  getExtrasFor(currentPerson, profileDay).forEach(e=>{
+    sums.kcal+=e.kcal; sums.protein+=e.protein; sums.carbs+=e.carbs; sums.fat+=e.fat;
+  });
+  updateProgressBars(sums, p.macros);
+  renderExtrasList();
+}
+
+// Balken-Grundgerüst wird nur EINMAL gebaut — bei jedem Update wird nur width/text
+// eines bestehenden Elements geändert, sonst hat der Browser keine "alte" Breite,
+// von der aus er animieren könnte (neu erzeugte Elemente springen immer sofort).
+function ensureProgressSkeleton(){
+  const el = document.getElementById("profileProgress");
+  if(el.dataset.built) return;
+  el.dataset.built = "1";
+  const rows = [["kcal","Kalorien","kcal"],["protein","Protein","g"],["carbs","Kohlenhydrate","g"],["fat","Fett","g"]];
+  el.innerHTML = rows.map(([key,label])=>`
+    <div class="mp-row"><div class="mp-label"><span>${label}</span><b id="mp-${key}-label"></b></div>
+    <div class="progressbar"><div class="fill ${key}" id="mp-${key}-fill" style="width:0%"></div></div></div>`).join("");
+}
+function updateProgressBars(sums, target){
+  ensureProgressSkeleton();
+  const pct = (val,tar)=>Math.max(0, Math.min(100, Math.round((val/tar)*100)));
+  const units = {kcal:"kcal", protein:"g", carbs:"g", fat:"g"};
+  ["kcal","protein","carbs","fat"].forEach(key=>{
+    const fill = document.getElementById(`mp-${key}-fill`);
+    const label = document.getElementById(`mp-${key}-label`);
+    const newWidth = pct(sums[key], target[key]) + "%";
+    label.textContent = `${Math.round(sums[key])} / ${target[key]} ${units[key]}`;
+    if(fill.style.width !== newWidth){
+      fill.style.width = newWidth;
+      fill.classList.remove("pulse"); void fill.offsetWidth; fill.classList.add("pulse");
+    }
+  });
 }
 
 // ---------- Rezept-Pool UI ----------
@@ -1204,6 +1478,27 @@ async function callGroq(prompt, maxTokens){
       response_format:{ type:"json_object" },
       reasoning_format:"hidden",
       reasoning_effort:"medium"
+    })
+  });
+  if(!response.ok){ const t = await response.text(); throw new Error("Groq-Fehler ("+response.status+"): "+t.slice(0,150)); }
+  const data = await response.json();
+  return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : "";
+}
+// Bildanalyse braucht ein multimodales Modell — aktuell qwen/qwen3.6-27b (Groqs empfohlenes
+// Vision-Modell nach der Abkündigung von Llama-4-Scout im Juni 2026).
+async function callGroqVision(prompt, imageDataUrl){
+  if(!state.groqKey) throw new Error("Kein Groq-API-Key hinterlegt. Bitte in den Einstellungen eintragen.");
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method:"POST",
+    headers:{"Content-Type":"application/json", "Authorization":"Bearer "+state.groqKey},
+    body: JSON.stringify({
+      model:"qwen/qwen3.6-27b",
+      messages:[{ role:"user", content:[
+        { type:"text", text: prompt },
+        { type:"image_url", image_url:{ url: imageDataUrl } }
+      ]}],
+      max_tokens: 900,
+      response_format:{ type:"json_object" }
     })
   });
   if(!response.ok){ const t = await response.text(); throw new Error("Groq-Fehler ("+response.status+"): "+t.slice(0,150)); }
